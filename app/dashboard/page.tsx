@@ -107,7 +107,7 @@ export default function DashboardPage() {
               Deposit
             </a>
             <a
-              href="#"
+              href="/dashboard/withdraw"
               className="flex-1 text-center border border-line text-paper text-[13.5px] py-2.5"
             >
               Withdraw
