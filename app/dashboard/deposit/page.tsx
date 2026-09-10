@@ -2,29 +2,26 @@
 
 import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
+import CryptoIcon from "@/components/CryptoIcon";
+import { getAsset, type Asset } from "@/lib/crypto-data";
+import { DEPOSIT_ADDRESSES } from "@/lib/deposit-addresses";
 
-type Wallet = {
-  sym: string;
-  name: string;
-  network: string;
-  address: string;
-};
+type DepositableAsset = Asset & { address: string };
 
-const wallets: Wallet[] = [
-  { sym: "BTC", name: "Bitcoin", network: "Bitcoin network", address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" },
-  { sym: "ETH", name: "Ethereum", network: "ERC-20", address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976" },
-  { sym: "USDT", name: "Tether", network: "ERC-20", address: "0x4E2b2e2a258f6f2E9c1c2b7C4D1a9f3B8E9dC5F1" },
-  { sym: "USDC", name: "USD Coin", network: "ERC-20", address: "0x9F8b3A1c7D2e4F5a6B7c8D9e0F1a2B3c4D5e6F70" },
-  { sym: "SOL", name: "Solana", network: "Solana network", address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" },
-  { sym: "BNB", name: "BNB", network: "BEP-20", address: "bnb136ns6lfw4zs5hg4n85vdthaad7hq5m4gtkgf23" },
-  { sym: "XRP", name: "XRP", network: "XRP Ledger", address: "rEb8TK3gBgk5auZkwc6sHnwrGVJH8DuaLh" },
-  { sym: "ADA", name: "Cardano", network: "Cardano network", address: "addr1qxy2lpan99fcnhhwvrn9pfp5tv2wgqwvv0f2ncxu4qx4pk" },
-  { sym: "DOGE", name: "Dogecoin", network: "Dogecoin network", address: "D8vFz4p1L37jdg1jXHYSbLJyzXFYzYqR3d" },
-  { sym: "MATIC", name: "Polygon", network: "Polygon network", address: "0x2C1b3F4a5D6e7F8091A2b3C4d5E6f70819A2b3C" },
-];
+// Build the depositable wallet list from the two data sources:
+// crypto-data.ts (name, network) + deposit-addresses.ts (address).
+// Adding a symbol to DEPOSIT_ADDRESSES automatically adds a wallet here,
+// as long as that symbol also exists in ASSETS.
+const wallets: DepositableAsset[] = Object.keys(DEPOSIT_ADDRESSES)
+  .map((sym) => {
+    const asset = getAsset(sym);
+    const address = DEPOSIT_ADDRESSES[sym];
+    return asset ? { ...asset, address } : null;
+  })
+  .filter((w): w is DepositableAsset => w !== null);
 
 export default function DepositPage() {
-  const [selected, setSelected] = useState<Wallet | null>(null);
+  const [selected, setSelected] = useState<DepositableAsset | null>(null);
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -49,11 +46,14 @@ export default function DepositPage() {
         </button>
 
         <div className="bg-slate border border-line px-5 md:px-8 py-6 md:py-8 max-w-[560px]">
-          <div className="flex items-center gap-2 mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-moss" />
-            <span className="font-mono text-[12px] text-paper-dim">
-              {selected.network.toUpperCase()} · YOUR VAULTED ADDRESS
-            </span>
+          <div className="flex items-center gap-3 mb-6">
+            <CryptoIcon sym={selected.sym} size={32} />
+            <div>
+              <div className="text-[15px] text-paper">{selected.name}</div>
+              <div className="font-mono text-[11.5px] text-paper-dim">
+                {selected.network.toUpperCase()}
+              </div>
+            </div>
           </div>
 
           {/* QR placeholder */}
@@ -98,9 +98,9 @@ export default function DepositPage() {
           </button>
 
           <div className="mt-6 pt-6 border-t border-line text-[12.5px] text-paper-dim leading-relaxed">
-            Only send {selected.name} ({selected.sym}) on the {selected.network}{" "}
-            to this address. Sending any other asset or using the wrong
-            network may result in permanent loss of funds.
+            Only send {selected.name} ({selected.sym}) on the{" "}
+            {selected.network} to this address. Sending any other asset or
+            using the wrong network may result in permanent loss of funds.
           </div>
         </div>
       </DashboardShell>
@@ -125,9 +125,7 @@ export default function DepositPage() {
             onClick={() => setSelected(w)}
             className="flex items-center gap-3 bg-slate border border-line hover:border-gold px-4 py-4 text-left transition-colors"
           >
-            <div className="w-9 h-9 rounded-full flex items-center justify-center font-mono text-[11px] bg-slate-2 text-gold border border-line shrink-0">
-              {w.sym}
-            </div>
+            <CryptoIcon sym={w.sym} size={32} />
             <div className="min-w-0">
               <div className="text-[14px] text-paper truncate">{w.name}</div>
               <div className="text-[11.5px] text-paper-dim font-mono truncate">

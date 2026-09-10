@@ -20,10 +20,11 @@ function SidebarContent({
 }) {
   return (
     <>
-      <div>
+      {/* Top: logo + nav — scrolls independently if it ever overflows */}
+      <div className="flex-1 overflow-y-auto min-h-0">
         <Link
           href="/"
-          className="flex items-center gap-2.5 text-[18px] px-7 mb-12"
+          className="flex items-center gap-2.5 text-[18px] px-7 mb-12 pt-1"
           onClick={onNavigate}
         >
           <span className="relative w-4 h-4 border-[1.5px] border-gold inline-block">
@@ -53,7 +54,8 @@ function SidebarContent({
         </nav>
       </div>
 
-      <div className="px-7">
+      {/* Bottom: profile/logout — always pinned, never scrolls */}
+      <div className="px-7 shrink-0">
         <div className="border-t border-line pt-5 flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-slate-2 border border-line flex items-center justify-center font-mono text-[12px] text-gold">
             JD
@@ -76,8 +78,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-ink text-paper flex">
-      {/* Desktop sidebar */}
-      <aside className="w-[220px] shrink-0 border-r border-line hidden md:flex flex-col justify-between py-8">
+      {/* Desktop sidebar — sticky to the viewport, independent of page scroll */}
+      <aside className="w-[220px] shrink-0 border-r border-line hidden md:flex flex-col sticky top-0 h-screen py-8">
         <SidebarContent pathname={pathname} />
       </aside>
 
@@ -88,7 +90,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             className="absolute inset-0 bg-ink/80"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="relative w-[240px] bg-ink border-r border-line flex flex-col justify-between py-8 h-full">
+          <aside className="relative w-[240px] bg-ink border-r border-line flex flex-col py-8 h-full">
             <SidebarContent
               pathname={pathname}
               onNavigate={() => setDrawerOpen(false)}
@@ -100,7 +102,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="border-b border-line px-4 md:px-10 py-4 md:py-5 flex items-center justify-between gap-3">
+        <header className="border-b border-line px-4 md:px-10 py-4 md:py-5 flex items-center justify-between gap-3 sticky top-0 bg-ink z-40">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="md:hidden flex flex-col gap-[4px] p-1.5 shrink-0"
@@ -111,8 +113,14 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <span className="block w-4 h-[1.5px] bg-paper" />
               <span className="block w-4 h-[1.5px] bg-paper" />
             </button>
-            <div className="font-mono text-[11px] md:text-[12.5px] text-paper-dim truncate">
-              YOUR HOLDINGS ARE MANAGED AUTOMATICALLY
+            <div className="font-mono text-[11px] md:text-[12.5px] text-paper-dim overflow-hidden whitespace-nowrap w-full md:w-auto">
+              <span className="inline-flex md:hidden gap-12 animate-topbar-marquee">
+                <span>YOUR HOLDINGS ARE MANAGED AUTOMATICALLY</span>
+                <span>YOUR HOLDINGS ARE MANAGED AUTOMATICALLY</span>
+              </span>
+              <span className="hidden md:inline">
+                YOUR HOLDINGS ARE MANAGED AUTOMATICALLY
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-5 shrink-0">
