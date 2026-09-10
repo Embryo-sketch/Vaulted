@@ -8,6 +8,12 @@ const navItems = [
   { label: "Overview", href: "/dashboard" },
   { label: "Deposit", href: "/dashboard/deposit" },
   { label: "Transactions", href: "/dashboard/transactions" },
+  { label: "About Us", href: "/dashboard/about" },
+  { label: "FAQ", href: "/dashboard/faq" },
+];
+
+const accountItems = [
+  { label: "Profile", href: "/dashboard/profile" },
   { label: "Settings", href: "/dashboard/settings" },
 ];
 
@@ -54,18 +60,43 @@ function SidebarContent({
         </nav>
       </div>
 
-      {/* Bottom: profile/logout — always pinned, never scrolls */}
-      <div className="px-7 shrink-0">
-        <div className="border-t border-line pt-5 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-2 border border-line flex items-center justify-center font-mono text-[12px] text-gold">
+      {/* Bottom: profile + account links — always pinned, never scrolls */}
+      <div className="px-7 shrink-0 pt-5 border-t border-line">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 rounded-full bg-slate-2 border border-line flex items-center justify-center font-mono text-[12px] text-gold shrink-0">
             JD
           </div>
-          <div>
-            <div className="text-[13.5px]">Jane Doe</div>
-            <Link href="/login" className="text-[12px] text-paper-dim" onClick={onNavigate}>
-              Log out
-            </Link>
+          <div className="min-w-0">
+            <div className="text-[13.5px] truncate">Jane Doe</div>
+            <div className="text-[11.5px] text-paper-dim truncate">
+              jane@example.com
+            </div>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-0.5">
+          {accountItems.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={onNavigate}
+                className={`text-[13px] py-1.5 ${
+                  active ? "text-paper" : "text-paper-dim hover:text-paper"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+          <Link
+            href="/login"
+            className="text-[13px] py-1.5 text-paper-dim hover:text-paper"
+            onClick={onNavigate}
+          >
+            Log out
+          </Link>
         </div>
       </div>
     </>
