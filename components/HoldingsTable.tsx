@@ -14,7 +14,7 @@ export function HoldingRow({ holding }: { holding: HoldingWithValue }) {
   const up = asset.change24h >= 0;
 
   return (
-    <tr>
+    <tr className="hover:bg-slate/40 transition-colors">
       <td className="py-4 border-b border-line text-[14.5px]">
         <div className="flex items-center gap-3">
           <CryptoIcon sym={asset.sym} size={28} />

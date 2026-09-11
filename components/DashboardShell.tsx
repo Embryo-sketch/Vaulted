@@ -3,9 +3,11 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import PageFadeIn from "@/components/PageFadeIn";
 
 const navItems = [
   { label: "Overview", href: "/dashboard" },
+  { label: "Invest", href: "/dashboard/invest" },
   { label: "Deposit", href: "/dashboard/deposit" },
   { label: "Transactions", href: "/dashboard/transactions" },
   { label: "About Us", href: "/dashboard/about" },
@@ -164,7 +166,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 md:px-10 py-6 md:py-8">{children}</main>
+        <main className="flex-1 px-4 md:px-10 py-6 md:py-8">
+          <PageFadeIn>{children}</PageFadeIn>
+        </main>
       </div>
     </div>
   );

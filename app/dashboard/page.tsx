@@ -1,30 +1,79 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PortfolioCard from "@/components/PortfolioCard";
 import HoldingsTable from "@/components/HoldingsTable";
+import { TransactionListItem } from "@/components/TransactionRow";
+import Skeleton from "@/components/Skeleton";
 import { getHoldingsWithValues, getPortfolioTotal } from "@/lib/crypto-data";
+import { getRecentTransactions } from "@/lib/transactions-data";
 import { formatCurrency } from "@/lib/format";
-
-type Tx = {
-  type: "Deposit" | "Growth" | "Withdraw";
-  asset: string;
-  amount: string;
-  date: string;
-  status: "Complete" | "Pending";
-};
-
-const transactions: Tx[] = [
-  { type: "Growth", asset: "Portfolio", amount: "+2.34%", date: "Sep 8", status: "Complete" },
-  { type: "Deposit", asset: "BTC", amount: "0.05 BTC", date: "Sep 6", status: "Complete" },
-  { type: "Deposit", asset: "USDT", amount: "$5,000.00", date: "Sep 4", status: "Complete" },
-  { type: "Deposit", asset: "ETH", amount: "1.2 ETH", date: "Aug 29", status: "Complete" },
-];
 
 const AVAILABLE_CASH = 12204.0;
 const PORTFOLIO_CHANGE_PERCENT = 2.34;
 
+function OverviewSkeleton() {
+  return (
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4 md:gap-6 mb-10">
+        <div className="bg-slate border border-line px-6 md:px-7 py-6 md:py-7">
+          <Skeleton className="h-3.5 w-32 mb-4" />
+          <Skeleton className="h-9 w-44 mb-6" />
+          <Skeleton className="h-14 w-full" />
+        </div>
+        <div className="bg-slate border border-line px-7 py-7 flex flex-col justify-between">
+          <div>
+            <Skeleton className="h-3.5 w-28 mb-4" />
+            <Skeleton className="h-7 w-32" />
+          </div>
+          <div className="flex gap-3 mt-6">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 flex-1" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-10">
+        <Skeleton className="h-5 w-24 mb-4" />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Skeleton className="h-5 w-40 mb-4" />
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 550);
+    return () => clearTimeout(t);
+  }, []);
+
   const holdings = getHoldingsWithValues();
   const total = getPortfolioTotal();
+  const recentTransactions = getRecentTransactions(4);
+
+  if (loading) {
+    return (
+      <DashboardShell>
+        <OverviewSkeleton />
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell>
@@ -69,32 +118,17 @@ export default function DashboardPage() {
           <h2 className="font-serif text-[20px] font-medium">
             Recent transactions
           </h2>
-          <a href="/dashboard/transactions" className="text-[13.5px] text-paper-dim border-b border-paper-dim">
+          <a
+            href="/dashboard/transactions"
+            className="text-[13.5px] text-paper-dim border-b border-paper-dim"
+          >
             View all
           </a>
         </div>
 
         <div className="border-t border-line">
-          {transactions.map((tx, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between py-4 border-b border-line text-[14px]"
-            >
-              <div className="flex items-center gap-4">
-                <span className="font-mono text-paper-dim text-[12.5px] w-16">
-                  {tx.date}
-                </span>
-                <span>
-                  {tx.type === "Growth" ? "Portfolio growth" : `${tx.type} ${tx.asset}`}
-                </span>
-              </div>
-              <div className="flex items-center gap-6">
-                <span className="font-mono text-[13.5px]">{tx.amount}</span>
-                <span className="text-[12.5px] text-moss font-mono">
-                  {tx.status}
-                </span>
-              </div>
-            </div>
+          {recentTransactions.map((tx) => (
+            <TransactionListItem key={tx.id} tx={tx} />
           ))}
         </div>
       </div>

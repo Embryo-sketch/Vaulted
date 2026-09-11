@@ -58,7 +58,10 @@ export default function MarketsTable() {
       <section className="pb-24">
         <div className="grid grid-cols-1 md:grid-cols-[0.9fr_1.1fr] gap-12 items-end mb-14 border-b border-line pb-10">
           <div>
-            <div className="font-mono text-[12.5px] text-gold">ASSETS WE HOLD</div>
+            <div className="flex items-center gap-2.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-moss animate-pulse" />
+              <span className="font-mono text-[12.5px] text-gold">ASSETS WE HOLD</span>
+            </div>
             <h2 className="font-serif font-medium text-[36px] leading-tight mt-3.5">
               Priced transparently, updated by the second.
             </h2>
@@ -92,7 +95,7 @@ export default function MarketsTable() {
           </thead>
           <tbody>
             {assets.map((a) => (
-              <tr key={a.sym}>
+              <tr key={a.sym} className="hover:bg-slate/40 transition-colors">
                 <td className="py-5 border-b border-line text-[15px]">
                   <div className="flex items-center gap-3.5">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center font-mono text-[11px] bg-slate-2 text-gold border border-line">

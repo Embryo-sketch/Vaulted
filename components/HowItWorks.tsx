@@ -45,7 +45,7 @@ export default function HowItWorks() {
           {steps.map((step, i) => (
             <div
               key={step.num}
-              className={`grid grid-cols-[50px_1fr] md:grid-cols-[80px_1fr_1.2fr] gap-6 md:gap-8 py-8 items-start border-b border-line ${
+              className={`grid grid-cols-[50px_1fr] md:grid-cols-[80px_1fr_1.2fr] gap-6 md:gap-8 py-8 items-start border-b border-line transition-colors hover:bg-slate/40 -mx-5 px-5 md:mx-0 md:px-0 ${
                 i === 0 ? "border-t" : ""
               }`}
             >

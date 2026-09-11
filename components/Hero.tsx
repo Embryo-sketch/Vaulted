@@ -1,19 +1,9 @@
 import Link from "next/link";
+import CountUp from "@/components/CountUp";
+import { INVESTMENT_TIERS, formatTierRange } from "@/lib/investment-tiers";
 
-type Holding = {
-  sym: string;
-  name: string;
-  amount: string;
-  value: string;
-  change: string;
-  up: boolean;
-};
-
-const holdings: Holding[] = [
-  { sym: "BTC", name: "Bitcoin", amount: "0.912 BTC", value: "$55,818", change: "+1.8%", up: true },
-  { sym: "ETH", name: "Ethereum", amount: "4.220 ETH", value: "$14,402", change: "+3.1%", up: true },
-  { sym: "SOL", name: "Solana", amount: "120.4 SOL", value: "$17,114", change: "-0.6%", up: false },
-];
+// A short preview of the tiers — full list lives on /dashboard/invest
+const previewTiers = [INVESTMENT_TIERS[0], INVESTMENT_TIERS[1], INVESTMENT_TIERS[4]];
 
 export default function Hero() {
   return (
@@ -24,23 +14,23 @@ export default function Hero() {
           <div className="flex items-center gap-3 mb-7">
             <span className="w-1.5 h-1.5 rounded-full bg-moss" />
             <span className="font-mono text-[13px] text-paper-dim">
-              MANAGED CUSTODY · NO TRADING REQUIRED
+              RATES FROM 4.5% TO 12.8% APR
             </span>
           </div>
 
-          <h1 className="font-serif font-medium text-[42px] md:text-[60px] leading-[1.05] tracking-tight text-paper">
+          <h1 className="font-serif font-medium text-[42px] md:text-[60px] leading-[1.05] tracking-tight text-paper/[0.92]">
             Deposit once,
             <br />
             let it <em className="italic text-gold font-normal">grow</em>.
           </h1>
 
           <p className="mt-6 text-[17px] leading-relaxed text-paper-dim max-w-[44ch]">
-            Vaulted assigns you a dedicated deposit address the moment you
-            sign up. Send your assets in, and we handle the rest — no
-            trading, no timing the market, no dashboard to babysit.
+            Choose a tier or a flexible amount, send your deposit to a
+            dedicated address, and your balance grows automatically from
+            there — no trading, no timing the market.
           </p>
 
-          <div className="mt-9 flex items-center gap-7">
+          <div className="mt-9 flex items-center gap-7 flex-wrap">
             <Link
               href="/signup"
               className="bg-gold text-ink px-6 py-3.5 text-[15px] font-medium"
@@ -51,25 +41,31 @@ export default function Hero() {
               href="#"
               className="text-[14.5px] border-b border-paper-dim pb-0.5"
             >
-              See how custody works
+              See investment tiers
             </a>
           </div>
 
           <div className="flex gap-6 md:gap-10 mt-10 md:mt-14 pt-6 md:pt-7 border-t border-line flex-wrap">
             <div>
-              <div className="font-mono text-[22px] text-paper">$4.1B</div>
+              <div className="font-mono text-[22px] text-paper">
+                <CountUp end={4.1} decimals={1} prefix="$" suffix="B" />
+              </div>
               <div className="text-[12.5px] text-paper-dim mt-1">
                 Assets under custody
               </div>
             </div>
             <div>
-              <div className="font-mono text-[22px] text-paper">210K</div>
+              <div className="font-mono text-[22px] text-paper">
+                <CountUp end={210} decimals={0} suffix="K" />
+              </div>
               <div className="text-[12.5px] text-paper-dim mt-1">
                 Accounts funded
               </div>
             </div>
             <div>
-              <div className="font-mono text-[22px] text-paper">99.98%</div>
+              <div className="font-mono text-[22px] text-paper">
+                <CountUp end={99.98} decimals={2} suffix="%" />
+              </div>
               <div className="text-[12.5px] text-paper-dim mt-1">
                 Cold-storage ratio
               </div>
@@ -77,67 +73,40 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Right: portfolio panel */}
+        {/* Right: investment tiers preview */}
         <div className="bg-slate border border-line">
-          <div className="px-6 py-[22px] border-b border-line flex justify-between items-baseline">
-            <div className="text-[14px] text-paper-dim">Portfolio value</div>
-            <div className="font-mono text-[13px] text-moss">growing</div>
-          </div>
-
-          <div className="px-6 pt-[26px] pb-1.5">
-            <span className="font-mono text-[38px] text-paper">$128,942</span>
-            <span className="font-mono text-[14px] text-moss ml-2.5">
-              +2.34%
-            </span>
-          </div>
-
-          <div className="px-5 pt-1.5 pb-[22px]">
-            <svg
-              width="100%"
-              height="52"
-              viewBox="0 0 320 52"
-              preserveAspectRatio="none"
-            >
-              <polyline
-                points="0,38 20,34 40,36 60,28 80,30 100,20 120,24 140,16 160,18 180,10 200,14 220,8 240,12 260,6 280,9 300,4 320,7"
-                fill="none"
-                stroke="#4F7A5C"
-                strokeWidth="1.5"
-              />
-            </svg>
+          <div className="px-6 py-[18px] border-b border-line">
+            <div className="text-[14px] text-paper-dim">Investment tiers</div>
           </div>
 
           <div className="border-t border-line">
-            {holdings.map((h, i) => (
+            {previewTiers.map((tier, i) => (
               <div
-                key={h.sym}
+                key={tier.id}
                 className={`flex justify-between items-center px-6 py-[15px] ${
-                  i < holdings.length - 1 ? "border-b border-line" : ""
+                  i < previewTiers.length - 1 ? "border-b border-line" : ""
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center font-mono text-[11px] bg-slate-2 text-gold border border-line">
-                    {h.sym}
-                  </div>
-                  <div>
-                    <div className="text-[14.5px]">{h.name}</div>
-                    <div className="text-[12px] text-paper-dim font-mono">
-                      {h.amount}
-                    </div>
+                <div>
+                  <div className="text-[14.5px]">{tier.name}</div>
+                  <div className="text-[12px] text-paper-dim font-mono mt-0.5">
+                    {formatTierRange(tier)}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-mono text-[14.5px]">{h.value}</div>
-                  <div
-                    className={`font-mono text-[12px] ${
-                      h.up ? "text-moss" : "text-rust"
-                    }`}
-                  >
-                    {h.change}
-                  </div>
+                <div className="font-mono text-[19px] text-gold">
+                  {tier.apr}%
                 </div>
               </div>
             ))}
+          </div>
+
+          <div className="px-6 py-4 border-t border-line">
+            <Link
+              href="/signup"
+              className="text-[13px] text-paper-dim border-b border-paper-dim"
+            >
+              View all tiers
+            </Link>
           </div>
         </div>
       </section>

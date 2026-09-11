@@ -46,7 +46,7 @@ export default function Security() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-line">
         {items.map((item) => (
-          <div key={item.letter} className="bg-slate px-6 md:px-9 py-8 md:py-10">
+          <div key={item.letter} className="bg-slate px-6 md:px-9 py-8 md:py-10 hover:bg-slate-2 transition-colors">
             <div className="font-mono text-gold text-[13px]">
               {item.letter}
             </div>

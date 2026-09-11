@@ -8,7 +8,7 @@ import {
 /** Compact single-line row — used in the Overview page's recent activity feed. */
 export function TransactionListItem({ tx }: { tx: Transaction }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-line text-[14px]">
+    <div className="flex items-center justify-between py-4 border-b border-line text-[14px] hover:bg-slate/40 transition-colors -mx-4 px-4">
       <div className="flex items-center gap-4">
         <span className="font-mono text-paper-dim text-[12.5px] w-16 shrink-0">
           {tx.date.replace(", 2026", "")}
@@ -32,7 +32,7 @@ export function TransactionListItem({ tx }: { tx: Transaction }) {
 /** Full table row — used on the Transactions page. */
 export function TransactionTableRow({ tx }: { tx: Transaction }) {
   return (
-    <tr>
+    <tr className="hover:bg-slate/40 transition-colors">
       <td className="py-4 border-b border-line font-mono text-[13.5px] text-paper-dim">
         {tx.date}
       </td>
