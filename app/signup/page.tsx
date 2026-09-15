@@ -1,10 +1,21 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AuthShell from "@/components/AuthShell";
 
 export default function SignupPage() {
+  const router = useRouter();
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // TODO: replace with real account creation once the backend is wired up
+    router.push("/dashboard");
+  }
+
   return (
     <AuthShell eyebrow="OPEN AN ACCOUNT" title="Own your first asset in minutes.">
-      <form className="flex flex-col gap-5">
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div>
           <label
             htmlFor="name"

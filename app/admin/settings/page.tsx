@@ -1,40 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import DashboardShell from "@/components/DashboardShell";
 
-type NotificationKey = "priceAlerts" | "txConfirmations" | "productUpdates";
+type NotificationKey = "newSignups" | "newSupportMessages" | "pendingVerifications";
 
 const notificationItems: { key: NotificationKey; label: string; desc: string }[] = [
-  { key: "priceAlerts", label: "Price alerts", desc: "Get notified on significant price moves" },
-  { key: "txConfirmations", label: "Transaction confirmations", desc: "Email me when a trade completes" },
-  { key: "productUpdates", label: "Product updates", desc: "Occasional news about new features" },
+  { key: "newSignups", label: "New user signups", desc: "Get notified when someone creates an account" },
+  { key: "newSupportMessages", label: "New support messages", desc: "Get notified when a user sends a chat message" },
+  { key: "pendingVerifications", label: "Pending verification requests", desc: "Get notified when a user is awaiting verification" },
 ];
 
-export default function SettingsPage() {
-  const router = useRouter();
-
+export default function AdminSettingsPage() {
   // Profile
-  const [fullName, setFullName] = useState("Jane Doe");
-  const [email, setEmail] = useState("jane@example.com");
+  const [fullName, setFullName] = useState("Admin User");
+  const [email, setEmail] = useState("admin@vaulted.com");
   const [profileSaved, setProfileSaved] = useState(false);
 
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
 
   // Notifications
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
-    priceAlerts: true,
-    txConfirmations: true,
-    productUpdates: false,
+    newSignups: true,
+    newSupportMessages: true,
+    pendingVerifications: true,
   });
-
-  // Danger zone
-  const [confirmingClose, setConfirmingClose] = useState(false);
 
   function handleSaveProfile() {
     setProfileSaved(true);
@@ -53,20 +46,14 @@ export default function SettingsPage() {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  function handleCloseAccount() {
-    if (!confirmingClose) {
-      setConfirmingClose(true);
-      return;
-    }
-    // TODO: real account closure once the backend is wired up
-    router.push("/login");
-  }
-
   return (
-    <DashboardShell>
-      <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-8">
-        Settings
+    <div>
+      <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">
+        Admin settings
       </h1>
+      <p className="text-paper-dim text-[14.5px] mb-8">
+        Manage your own admin account — separate from user accounts.
+      </p>
 
       <div className="flex flex-col gap-10 max-w-[560px]">
         {/* Profile */}
@@ -142,7 +129,7 @@ export default function SettingsPage() {
                 <div className="text-[14.5px]">Two-factor authentication</div>
                 <div className="text-[12.5px] text-paper-dim mt-1">
                   {twoFactorEnabled
-                    ? "Enabled — your account has an extra layer of security"
+                    ? "Enabled — recommended for admin accounts"
                     : "Add an extra layer of security to your account"}
                 </div>
               </div>
@@ -210,35 +197,7 @@ export default function SettingsPage() {
             })}
           </div>
         </section>
-
-        {/* Danger zone */}
-        <section className="border-t border-line pt-8">
-          <h2 className="font-mono text-[12.5px] text-rust mb-5">
-            DANGER ZONE
-          </h2>
-          <div className="flex items-center justify-between bg-slate border border-rust px-5 py-4">
-            <div>
-              <div className="text-[14.5px]">Close account</div>
-              <div className="text-[12.5px] text-paper-dim mt-1">
-                {confirmingClose
-                  ? "Click again to permanently confirm closure"
-                  : "Withdraw all funds and permanently delete your account"}
-              </div>
-            </div>
-            <button
-              onClick={handleCloseAccount}
-              onBlur={() => setConfirmingClose(false)}
-              className={`text-[13px] px-3.5 py-1.5 shrink-0 ml-4 ${
-                confirmingClose
-                  ? "bg-rust text-paper border border-rust"
-                  : "border border-rust text-rust"
-              }`}
-            >
-              {confirmingClose ? "Confirm close" : "Close account"}
-            </button>
-          </div>
-        </section>
       </div>
-    </DashboardShell>
+    </div>
   );
 }
