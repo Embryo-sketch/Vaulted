@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AuthShell from "@/components/AuthShell";
 import { createClient } from "@/lib/supabase/client";
+import { isAdmin } from "@/lib/supabase/roles";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,21 +17,29 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: String(formData.get("email")),
-      password: String(formData.get("password")),
-    });
+    try {
+      const formData = new FormData(e.currentTarget);
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: signInError,
+      } = await supabase.auth.signInWithPassword({
+        email: String(formData.get("email")),
+        password: String(formData.get("password")),
+      });
 
-    setIsSubmitting(false);
-    if (signInError) {
-      setError(signInError.message);
-      return;
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      router.replace(isAdmin(user?.app_metadata) ? "/admin" : "/dashboard");
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to log in.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.replace("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -57,9 +66,9 @@ export default function LoginPage() {
             <label htmlFor="password" className="block text-[13px] text-paper-dim">
               Password
             </label>
-            <a href="#" className="text-[13px] text-paper-dim border-b border-paper-dim">
+            <Link href="/forgot-password" className="text-[13px] text-paper-dim border-b border-paper-dim">
               Forgot?
-            </a>
+            </Link>
           </div>
           <input
             id="password"

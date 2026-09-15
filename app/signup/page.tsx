@@ -18,29 +18,34 @@ export default function SignupPage() {
     setMessage(null);
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
-    const supabase = createClient();
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: String(formData.get("email")),
-      password: String(formData.get("password")),
-      options: {
-        data: { full_name: String(formData.get("name")) },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const formData = new FormData(e.currentTarget);
+      const supabase = createClient();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: String(formData.get("email")),
+        password: String(formData.get("password")),
+        options: {
+          data: { full_name: String(formData.get("name")) },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    setIsSubmitting(false);
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
-    }
-    if (!data.session) {
-      setMessage("Check your email to confirm your account, then log in.");
-      return;
-    }
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
+      if (!data.session) {
+        setMessage("Check your email to confirm your account, then log in.");
+        return;
+      }
 
-    router.replace("/dashboard");
-    router.refresh();
+      router.replace("/dashboard");
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Unable to create account.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (

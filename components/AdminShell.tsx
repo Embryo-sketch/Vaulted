@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAdminNotifications } from "@/components/AdminNotificationsProvider";
+import SignOutButton from "@/components/SignOutButton";
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -66,9 +67,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </Link>
           </nav>
         </div>
-        <Link href="/login" className="text-[13px] text-paper-dim">
-          Log out
-        </Link>
+        <SignOutButton className="text-[13px] text-paper-dim" />
       </header>
 
       <main className="flex-1 px-5 md:px-10 py-8">{children}</main>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
+import { createClient } from "@/lib/supabase/client";
 
 type NotificationKey = "priceAlerts" | "txConfirmations" | "productUpdates";
 
@@ -15,18 +16,25 @@ const notificationItems: { key: NotificationKey; label: string; desc: string }[]
 export default function SettingsPage() {
   const router = useRouter();
 
-  // Profile
-  const [fullName, setFullName] = useState("Jane Doe");
-  const [email, setEmail] = useState("jane@example.com");
-  const [profileSaved, setProfileSaved] = useState(false);
+  // Profile — loaded from Supabase, kept in sync with what's on the account
+  const [userId, setUserId] = useState<string | null>(null);
+  const [originalEmail, setOriginalEmail] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [passwordSaved, setPasswordSaved] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
 
-  // Notifications
+  // Notifications — still local-only, not yet backed by the database
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
     priceAlerts: true,
     txConfirmations: true,
@@ -36,17 +44,110 @@ export default function SettingsPage() {
   // Danger zone
   const [confirmingClose, setConfirmingClose] = useState(false);
 
-  function handleSaveProfile() {
-    setProfileSaved(true);
-    setTimeout(() => setProfileSaved(false), 2000);
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setLoadingProfile(false);
+        return;
+      }
+      setUserId(user.id);
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
+
+      if (!error && data) {
+        setFullName(data.full_name ?? "");
+        setEmail(data.email ?? user.email ?? "");
+        setOriginalEmail(data.email ?? user.email ?? "");
+      }
+      setLoadingProfile(false);
+    }
+    void load();
+  }, []);
+
+  async function handleSaveProfile() {
+    if (!userId) return;
+    setSavingProfile(true);
+    setProfileError(null);
+    setProfileMessage(null);
+
+    const supabase = createClient();
+
+    const { error: nameError } = await supabase
+      .from("profiles")
+      .update({ full_name: fullName })
+      .eq("id", userId);
+
+    if (nameError) {
+      setProfileError(nameError.message);
+      setSavingProfile(false);
+      return;
+    }
+
+    const emailChanged = email.trim() !== originalEmail.trim();
+    if (emailChanged) {
+      const { error: emailError } = await supabase.auth.updateUser({ email });
+      if (emailError) {
+        setProfileError(emailError.message);
+        setSavingProfile(false);
+        return;
+      }
+      setProfileMessage(
+        "Name saved. Check your new email for a confirmation link — your login email won't change until you confirm it.",
+      );
+    } else {
+      setProfileMessage("Saved.");
+    }
+
+    setSavingProfile(false);
+    setTimeout(() => setProfileMessage(null), 4000);
   }
 
-  function handleUpdatePassword() {
+  async function handleUpdatePassword() {
     if (!currentPassword || !newPassword) return;
-    setPasswordSaved(true);
+    setPasswordError(null);
+    setPasswordMessage(null);
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    setSavingPassword(true);
+    const supabase = createClient();
+
+    // Confirm the current password is correct before changing it.
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: originalEmail,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      setPasswordError("Current password is incorrect.");
+      setSavingPassword(false);
+      return;
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+
+    setSavingPassword(false);
+
+    if (updateError) {
+      setPasswordError(updateError.message);
+      return;
+    }
+
+    setPasswordMessage("Password updated.");
     setCurrentPassword("");
     setNewPassword("");
-    setTimeout(() => setPasswordSaved(false), 2000);
+    setTimeout(() => setPasswordMessage(null), 3000);
   }
 
   function toggleNotification(key: NotificationKey) {
@@ -58,7 +159,7 @@ export default function SettingsPage() {
       setConfirmingClose(true);
       return;
     }
-    // TODO: real account closure once the backend is wired up
+    // TODO: real account closure once withdrawal + offboarding flow exists
     router.push("/login");
   }
 
@@ -81,7 +182,8 @@ export default function SettingsPage() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
+                disabled={loadingProfile}
+                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold disabled:opacity-50"
               />
             </div>
             <div>
@@ -92,18 +194,23 @@ export default function SettingsPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
+                disabled={loadingProfile}
+                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold disabled:opacity-50"
               />
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSaveProfile}
-                className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5"
+                disabled={savingProfile || loadingProfile}
+                className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 disabled:opacity-40"
               >
-                Save changes
+                {savingProfile ? "Saving…" : "Save changes"}
               </button>
-              {profileSaved && (
-                <span className="text-[13px] text-moss">Saved</span>
+              {profileMessage && (
+                <span className="text-[13px] text-moss">{profileMessage}</span>
+              )}
+              {profileError && (
+                <span className="text-[13px] text-rust">{profileError}</span>
               )}
             </div>
           </div>
@@ -160,13 +267,16 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleUpdatePassword}
-                disabled={!currentPassword || !newPassword}
+                disabled={!currentPassword || !newPassword || savingPassword}
                 className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 disabled:opacity-40"
               >
-                Update password
+                {savingPassword ? "Updating…" : "Update password"}
               </button>
-              {passwordSaved && (
-                <span className="text-[13px] text-moss">Password updated</span>
+              {passwordMessage && (
+                <span className="text-[13px] text-moss">{passwordMessage}</span>
+              )}
+              {passwordError && (
+                <span className="text-[13px] text-rust">{passwordError}</span>
               )}
             </div>
           </div>

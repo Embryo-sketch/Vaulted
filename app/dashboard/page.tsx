@@ -3,135 +3,46 @@
 import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import PortfolioCard from "@/components/PortfolioCard";
-import HoldingsTable from "@/components/HoldingsTable";
-import { TransactionListItem } from "@/components/TransactionRow";
 import Skeleton from "@/components/Skeleton";
-import { getHoldingsWithValues, getPortfolioTotal } from "@/lib/crypto-data";
-import { getRecentTransactions } from "@/lib/transactions-data";
 import { formatCurrency } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
 
-const AVAILABLE_CASH = 12204.0;
-const PORTFOLIO_CHANGE_PERCENT = 2.34;
-
-function OverviewSkeleton() {
-  return (
-    <div>
-      <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4 md:gap-6 mb-10">
-        <div className="bg-slate border border-line px-6 md:px-7 py-6 md:py-7">
-          <Skeleton className="h-3.5 w-32 mb-4" />
-          <Skeleton className="h-9 w-44 mb-6" />
-          <Skeleton className="h-14 w-full" />
-        </div>
-        <div className="bg-slate border border-line px-7 py-7 flex flex-col justify-between">
-          <div>
-            <Skeleton className="h-3.5 w-28 mb-4" />
-            <Skeleton className="h-7 w-32" />
-          </div>
-          <div className="flex gap-3 mt-6">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 flex-1" />
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-10">
-        <Skeleton className="h-5 w-24 mb-4" />
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-14 w-full" />
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Skeleton className="h-5 w-40 mb-4" />
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-10 w-full" />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+type Profile = { portfolio_value: number; available_cash: number };
+type Transaction = { id: string; type: string; amount: number; note: string | null; created_at: string };
 
 export default function DashboardPage() {
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 550);
-    return () => clearTimeout(t);
+    async function loadAccount() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [{ data: account, error: profileError }, { data: activity, error: transactionError }] = await Promise.all([
+        supabase.from("profiles").select("portfolio_value, available_cash").eq("id", user.id).single(),
+        supabase.from("transactions").select("id, type, amount, note, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(4),
+      ]);
+      if (profileError || transactionError) {
+        setError(profileError?.message ?? transactionError?.message ?? "Unable to load your account.");
+        return;
+      }
+      setProfile(account);
+      setTransactions(activity ?? []);
+    }
+    void loadAccount();
   }, []);
 
-  const holdings = getHoldingsWithValues();
-  const total = getPortfolioTotal();
-  const recentTransactions = getRecentTransactions(4);
-
-  if (loading) {
-    return (
-      <DashboardShell>
-        <OverviewSkeleton />
-      </DashboardShell>
-    );
-  }
-
-  return (
-    <DashboardShell>
-      {/* Portfolio summary */}
+  return <DashboardShell>
+    {!profile && !error ? <Skeleton className="h-64 w-full" /> : <>
+      {error && <p className="mb-6 text-[14px] text-rust">{error}</p>}
       <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-4 md:gap-6 mb-10">
-        <PortfolioCard total={total} changePercent={PORTFOLIO_CHANGE_PERCENT} />
-
-        <div className="bg-slate border border-line px-7 py-7 flex flex-col justify-between">
-          <div>
-            <div className="text-[14px] text-paper-dim mb-2">
-              Available cash
-            </div>
-            <div className="font-mono text-[26px]">
-              {formatCurrency(AVAILABLE_CASH)}
-            </div>
-          </div>
-          <div className="flex gap-3 mt-6">
-            <a
-              href="/dashboard/deposit"
-              className="flex-1 text-center bg-gold text-ink text-[13.5px] font-medium py-2.5"
-            >
-              Deposit
-            </a>
-            <a
-              href="/dashboard/withdraw"
-              className="flex-1 text-center border border-line text-paper text-[13.5px] py-2.5"
-            >
-              Withdraw
-            </a>
-          </div>
-        </div>
+        <PortfolioCard total={profile?.portfolio_value ?? 0} changePercent={0} />
+        <div className="bg-slate border border-line px-7 py-7 flex flex-col justify-between"><div><div className="text-[14px] text-paper-dim mb-2">Available cash</div><div className="font-mono text-[26px]">{formatCurrency(profile?.available_cash ?? 0)}</div></div><div className="flex gap-3 mt-6"><a href="/dashboard/deposit" className="flex-1 text-center bg-gold text-ink text-[13.5px] font-medium py-2.5">Deposit</a><a href="/dashboard/withdraw" className="flex-1 text-center border border-line text-paper text-[13.5px] py-2.5">Withdraw</a></div></div>
       </div>
-
-      {/* Holdings */}
-      <div className="mb-10">
-        <HoldingsTable holdings={holdings} />
-      </div>
-
-      {/* Recent transactions */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-serif text-[20px] font-medium">
-            Recent transactions
-          </h2>
-          <a
-            href="/dashboard/transactions"
-            className="text-[13.5px] text-paper-dim border-b border-paper-dim"
-          >
-            View all
-          </a>
-        </div>
-
-        <div className="border-t border-line">
-          {recentTransactions.map((tx) => (
-            <TransactionListItem key={tx.id} tx={tx} />
-          ))}
-        </div>
-      </div>
-    </DashboardShell>
-  );
+      <section className="mb-10"><h2 className="font-serif text-[20px] font-medium mb-4">Holdings</h2><div className="border border-line border-dashed px-6 py-8 text-paper-dim text-[14px]">No holdings have been recorded yet.</div></section>
+      <section><div className="flex items-center justify-between mb-4"><h2 className="font-serif text-[20px] font-medium">Recent transactions</h2><a href="/dashboard/transactions" className="text-[13.5px] text-paper-dim border-b border-paper-dim">View all</a></div>{transactions.length === 0 ? <div className="border border-line border-dashed px-6 py-8 text-paper-dim text-[14px]">No transactions yet.</div> : <div className="border-t border-line">{transactions.map((transaction) => <div key={transaction.id} className="flex justify-between gap-4 py-4 border-b border-line text-[14px]"><div><span>{transaction.type}</span>{transaction.note && <span className="text-paper-dim"> — {transaction.note}</span>}</div><span className="font-mono">{formatCurrency(transaction.amount)}</span></div>)}</div>}</section>
+    </>}
+  </DashboardShell>;
 }

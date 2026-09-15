@@ -1,9 +1,20 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import PageFadeIn from "@/components/PageFadeIn";
+import SignOutButton from "@/components/SignOutButton";
+import { createClient } from "@/lib/supabase/client";
+
+function getInitials(name: string, email: string): string {
+  const trimmed = name.trim();
+  if (trimmed) {
+    const parts = trimmed.split(/\s+/);
+    return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+  }
+  return email.slice(0, 2).toUpperCase();
+}
 
 const navItems = [
   { label: "Overview", href: "/dashboard" },
@@ -22,10 +33,15 @@ const accountItems = [
 function SidebarContent({
   pathname,
   onNavigate,
+  fullName,
+  email,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  fullName: string;
+  email: string;
 }) {
+  const initials = getInitials(fullName, email);
   return (
     <>
       {/* Top: logo + nav — scrolls independently if it ever overflows */}
@@ -66,13 +82,11 @@ function SidebarContent({
       <div className="px-7 shrink-0 pt-5 border-t border-line">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-full bg-slate-2 border border-line flex items-center justify-center font-mono text-[12px] text-gold shrink-0">
-            JD
+            {initials}
           </div>
           <div className="min-w-0">
-            <div className="text-[13.5px] truncate">Jane Doe</div>
-            <div className="text-[11.5px] text-paper-dim truncate">
-              jane@example.com
-            </div>
+            <div className="text-[13.5px] truncate">{fullName || "Unnamed user"}</div>
+            <div className="text-[11.5px] text-paper-dim truncate">{email}</div>
           </div>
         </div>
 
@@ -92,13 +106,9 @@ function SidebarContent({
               </Link>
             );
           })}
-          <Link
-            href="/login"
+          <SignOutButton
             className="text-[13px] py-1.5 text-paper-dim hover:text-paper"
-            onClick={onNavigate}
-          >
-            Log out
-          </Link>
+          />
         </div>
       </div>
     </>
@@ -108,12 +118,33 @@ function SidebarContent({
 export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [identity, setIdentity] = useState({ fullName: "", email: "" });
+
+  useEffect(() => {
+    async function loadIdentity() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user.id)
+        .single();
+      setIdentity({
+        fullName: profile?.full_name ?? "",
+        email: profile?.email ?? user.email ?? "",
+      });
+    }
+    void loadIdentity();
+  }, []);
 
   return (
     <div className="min-h-screen bg-ink text-paper flex">
       {/* Desktop sidebar — sticky to the viewport, independent of page scroll */}
       <aside className="w-[220px] shrink-0 border-r border-line hidden md:flex flex-col sticky top-0 h-screen py-8">
-        <SidebarContent pathname={pathname} />
+        <SidebarContent pathname={pathname} fullName={identity.fullName} email={identity.email} />
       </aside>
 
       {/* Mobile drawer */}
@@ -127,6 +158,8 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <SidebarContent
               pathname={pathname}
               onNavigate={() => setDrawerOpen(false)}
+              fullName={identity.fullName}
+              email={identity.email}
             />
           </aside>
         </div>

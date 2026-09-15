@@ -37,3 +37,19 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 # Vaulted
 # Vaulted
 # Vaulted
+# Vaulted
+
+## Make an account an administrator
+
+1. Create the account normally at `/signup` and confirm its email if confirmation is enabled.
+2. In Supabase Dashboard, open **SQL Editor** and run the following, replacing the email address with the administrator account's email:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"admin"}'::jsonb
+where email = 'admin@example.com';
+```
+
+3. Log out and log back in. That account will be sent to `/admin`; every other account goes to `/dashboard`.
+
+Only set roles in `app_metadata`, not `user_metadata`, because users can edit their own user metadata.

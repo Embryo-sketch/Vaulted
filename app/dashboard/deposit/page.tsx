@@ -3,6 +3,7 @@
 import { useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import CryptoIcon from "@/components/CryptoIcon";
+import { createClient } from "@/lib/supabase/client";
 import { getAsset, type Asset } from "@/lib/crypto-data";
 import { DEPOSIT_ADDRESSES } from "@/lib/deposit-addresses";
 
@@ -24,6 +25,12 @@ export default function DepositPage() {
   const [selected, setSelected] = useState<DepositableAsset | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [claimAmount, setClaimAmount] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   function handleCopy() {
     if (!selected) return;
     navigator.clipboard.writeText(selected.address);
@@ -31,17 +38,49 @@ export default function DepositPage() {
     setTimeout(() => setCopied(false), 1800);
   }
 
+  async function handleSubmitClaim() {
+    if (!selected) return;
+    const amount = Number(claimAmount);
+    if (!amount || amount <= 0) {
+      setError("Enter the amount you sent.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    const { error: rpcError } = await createClient().rpc("submit_deposit_request", {
+      crypto_currency: selected.sym,
+      claimed_amount: amount,
+      tx_hash: txHash || null,
+    });
+
+    setSubmitting(false);
+
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+
+    setSubmitted(true);
+    setClaimAmount("");
+    setTxHash("");
+  }
+
+  function reset() {
+    setSelected(null);
+    setCopied(false);
+    setSubmitted(false);
+    setError(null);
+    setClaimAmount("");
+    setTxHash("");
+  }
+
   // Step 2: address detail view
   if (selected) {
     return (
       <DashboardShell>
-        <button
-          onClick={() => {
-            setSelected(null);
-            setCopied(false);
-          }}
-          className="text-[13.5px] text-paper-dim mb-6 flex items-center gap-1.5"
-        >
+        <button onClick={reset} className="text-[13.5px] text-paper-dim mb-6 flex items-center gap-1.5">
           ← Back to wallets
         </button>
 
@@ -81,26 +120,63 @@ export default function DepositPage() {
             </svg>
           </div>
 
-          <div className="text-[13px] text-paper-dim mb-2">
-            {selected.name} deposit address
-          </div>
+          <div className="text-[13px] text-paper-dim mb-2">{selected.name} deposit address</div>
           <div className="flex items-center gap-3 bg-slate-2 border border-line px-4 py-3 mb-4">
-            <span className="font-mono text-[13px] text-paper break-all">
-              {selected.address}
-            </span>
+            <span className="font-mono text-[13px] text-paper break-all">{selected.address}</span>
           </div>
 
-          <button
-            onClick={handleCopy}
-            className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 w-full"
-          >
+          <button onClick={handleCopy} className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 w-full">
             {copied ? "Copied!" : "Copy address"}
           </button>
 
           <div className="mt-6 pt-6 border-t border-line text-[12.5px] text-paper-dim leading-relaxed">
-            Only send {selected.name} ({selected.sym}) on the{" "}
-            {selected.network} to this address. Sending any other asset or
-            using the wrong network may result in permanent loss of funds.
+            Only send {selected.name} ({selected.sym}) on the {selected.network} to this
+            address. Sending any other asset or using the wrong network may result in
+            permanent loss of funds.
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-line">
+            <div className="font-mono text-gold text-[13px] mb-4">I&apos;VE SENT A DEPOSIT</div>
+
+            {submitted ? (
+              <div className="border border-moss p-4">
+                <p className="text-moss text-[13.5px]">
+                  Deposit claim submitted. We&apos;ll confirm it once we see it on-chain and
+                  credit your account.
+                </p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="mt-3 text-[12.5px] text-paper-dim underline"
+                >
+                  Submit another
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    value={claimAmount}
+                    onChange={(event) => setClaimAmount(event.target.value)}
+                    placeholder={`Amount sent (${selected.sym})`}
+                    className="bg-slate-2 border border-line p-3"
+                  />
+                  <input
+                    value={txHash}
+                    onChange={(event) => setTxHash(event.target.value)}
+                    placeholder="Transaction hash (optional)"
+                    className="bg-slate-2 border border-line p-3"
+                  />
+                </div>
+                {error && <p className="mt-3 text-rust text-[13px]">{error}</p>}
+                <button
+                  onClick={handleSubmitClaim}
+                  disabled={submitting}
+                  className="mt-4 bg-gold text-ink px-5 py-2.5 disabled:opacity-40"
+                >
+                  {submitting ? "Submitting…" : "Submit deposit claim"}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </DashboardShell>
@@ -110,12 +186,10 @@ export default function DepositPage() {
   // Step 1: wallet selection grid
   return (
     <DashboardShell>
-      <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">
-        Deposit
-      </h1>
+      <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">Deposit</h1>
       <p className="text-paper-dim text-[14.5px] mb-8 max-w-[52ch]">
-        Choose an asset below to view your dedicated deposit address for it.
-        Deposits are detected automatically once sent.
+        Choose an asset below to view your dedicated deposit address for it. Once you&apos;ve
+        sent funds, submit a deposit claim so we can confirm it and credit your account.
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -128,9 +202,7 @@ export default function DepositPage() {
             <CryptoIcon sym={w.sym} size={32} />
             <div className="min-w-0">
               <div className="text-[14px] text-paper truncate">{w.name}</div>
-              <div className="text-[11.5px] text-paper-dim font-mono truncate">
-                {w.network}
-              </div>
+              <div className="text-[11.5px] text-paper-dim font-mono truncate">{w.network}</div>
             </div>
           </button>
         ))}

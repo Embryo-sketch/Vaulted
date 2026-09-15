@@ -1,327 +1,330 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAdminUsers } from "@/components/AdminUsersProvider";
-import type { AdminUser } from "@/lib/admin-users-data";
-import { getUserTransactions } from "@/lib/admin-transactions-data";
-import { TransactionTableRow } from "@/components/TransactionRow";
+import { useParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
 
-type PaymentLogEntry = {
-  id: string;
-  type: "Deposit" | "Growth adjustment" | "Withdrawal";
-  amount: number;
-  note: string;
-  timestamp: string;
+type Profile = {
+  full_name: string;
+  email: string;
+  status: "Verified" | "Pending" | "Suspended";
+  portfolio_value: number;
+  available_cash: number;
 };
 
-const statusOptions: AdminUser["status"][] = ["Verified", "Pending", "Suspended"];
+type Transaction = {
+  id: string;
+  type: string;
+  amount: number;
+  note: string | null;
+  crypto_currency: string | null;
+  crypto_amount: number | null;
+  created_at: string;
+};
+
+type DepositRequest = {
+  id: string;
+  crypto_currency: string;
+  claimed_amount: number;
+  tx_hash: string | null;
+  status: "Pending" | "Confirmed" | "Rejected";
+  created_at: string;
+};
+
+const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
+
+function statusColor(status: string) {
+  if (status === "Verified" || status === "Confirmed") return "text-moss border-moss";
+  if (status === "Suspended" || status === "Rejected") return "text-rust border-rust";
+  return "text-gold border-gold";
+}
 
 export default function AdminUserDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params.id;
-  const router = useRouter();
-  const { getUser, updateUser, deleteUser } = useAdminUsers();
-  const user = getUser(id);
-  const userTransactions = getUserTransactions(id);
+  const { id } = useParams<{ id: string }>();
 
-  // All hooks run unconditionally, on every render, regardless of
-  // whether `user` was found — the "not found" branch happens after.
-  const [status, setStatus] = useState<AdminUser["status"]>(user?.status ?? "Pending");
-  const [portfolioValue, setPortfolioValue] = useState((user?.portfolioValue ?? 0).toString());
-  const [availableCash, setAvailableCash] = useState((user?.availableCash ?? 0).toString());
-  const [saved, setSaved] = useState(false);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
 
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentType, setPaymentType] = useState<PaymentLogEntry["type"]>("Deposit");
-  const [paymentNote, setPaymentNote] = useState("");
-  const [log, setLog] = useState<PaymentLogEntry[]>([]);
+  const [amount, setAmount] = useState("");
+  const [type, setType] = useState("Deposit");
+  const [note, setNote] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
 
-  if (!user) {
-    return (
-      <div>
-        <Link href="/admin" className="text-[13.5px] text-paper-dim mb-6 inline-block">
-          ← Back to users
-        </Link>
-        <div className="border border-line border-dashed px-6 py-10 text-center">
-          <div className="text-[14.5px] text-paper-dim">
-            No user found with id &quot;{id}&quot;.
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const [statusDraft, setStatusDraft] = useState<Profile["status"]>("Pending");
+  const [savingStatus, setSavingStatus] = useState(false);
 
-  function handleSaveDetails() {
-    updateUser(id, {
-      status,
-      portfolioValue: parseFloat(portfolioValue) || 0,
-      availableCash: parseFloat(availableCash) || 0,
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  }
+  const [reviewAmounts, setReviewAmounts] = useState<Record<string, string>>({});
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
 
-  function handleApplyPayment() {
-    const amount = parseFloat(paymentAmount.replace(/,/g, ""));
-    if (isNaN(amount) || amount === 0) return;
-
-    const signedAmount = paymentType === "Withdrawal" ? -Math.abs(amount) : Math.abs(amount);
-    const newValue = parseFloat(portfolioValue) + signedAmount;
-
-    setPortfolioValue(newValue.toString());
-    updateUser(id, { portfolioValue: newValue });
-
-    setLog((prev) => [
-      {
-        id: Date.now().toString(),
-        type: paymentType,
-        amount: signedAmount,
-        note: paymentNote || "—",
-        timestamp: "Just now",
-      },
-      ...prev,
+  async function load() {
+    const supabase = createClient();
+    const [{ data: user }, { data: history }, { data: requests }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("full_name, email, status, portfolio_value, available_cash")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("transactions")
+        .select("id, type, amount, note, crypto_currency, crypto_amount, created_at")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("deposit_requests")
+        .select("id, crypto_currency, claimed_amount, tx_hash, status, created_at")
+        .eq("user_id", id)
+        .order("created_at", { ascending: false }),
     ]);
 
-    setPaymentAmount("");
-    setPaymentNote("");
+    setProfile(user);
+    if (user) setStatusDraft(user.status);
+    setTransactions(history ?? []);
+    setDepositRequests(requests ?? []);
   }
 
-  function handleDeleteUser() {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void load();
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  async function record() {
+    const value = Number(amount);
+    if (!value || value <= 0) return;
+    const { error } = await createClient().rpc("record_admin_transaction", {
+      target_user_id: id,
+      transaction_type: type,
+      transaction_amount: value,
+      transaction_note: note,
+    });
+    if (error) setMessage(error.message);
+    else {
+      setMessage("Transaction recorded.");
+      setAmount("");
+      setNote("");
+      await load();
+    }
+  }
+
+  async function saveStatus() {
+    if (!profile || statusDraft === profile.status) return;
+    setSavingStatus(true);
+    const { error } = await createClient()
+      .from("profiles")
+      .update({ status: statusDraft })
+      .eq("id", id);
+    setSavingStatus(false);
+    if (error) setMessage(error.message);
+    else {
+      setProfile({ ...profile, status: statusDraft });
+      setMessage("Verification status updated.");
+    }
+  }
+
+  async function reviewRequest(requestId: string, decision: "Confirmed" | "Rejected") {
+    setReviewingId(requestId);
+    const usdAmount = decision === "Confirmed" ? Number(reviewAmounts[requestId]) : null;
+
+    if (decision === "Confirmed" && (!usdAmount || usdAmount <= 0)) {
+      setMessage("Enter a valid USD amount before confirming.");
+      setReviewingId(null);
       return;
     }
-    deleteUser(id);
-    router.push("/admin");
+
+    const { error } = await createClient().rpc("review_deposit_request", {
+      request_id: requestId,
+      decision,
+      usd_amount: usdAmount,
+      review_note: null,
+    });
+
+    setReviewingId(null);
+    if (error) setMessage(error.message);
+    else {
+      setMessage(decision === "Confirmed" ? "Deposit confirmed and credited." : "Deposit request rejected.");
+      await load();
+    }
   }
 
+  const pendingRequests = depositRequests.filter((r) => r.status === "Pending");
+  const reviewedRequests = depositRequests.filter((r) => r.status !== "Pending");
+
   return (
-    <div>
-      <Link href="/admin" className="text-[13.5px] text-paper-dim mb-6 inline-block">
+    <div className="max-w-[900px]">
+      <Link href="/admin" className="text-paper-dim text-[13px]">
         ← Back to users
       </Link>
 
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-slate-2 border border-line flex items-center justify-center font-mono text-[15px] text-gold shrink-0">
-            {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+      {!profile ? (
+        <p className="mt-8 text-paper-dim">Loading user…</p>
+      ) : (
+        <>
+          <div className="mt-6 mb-8">
+            <h1 className="font-serif text-[24px]">{profile.full_name || "Unnamed user"}</h1>
+            <p className="text-paper-dim">{profile.email}</p>
+            <p className="mt-3 font-mono">
+              Portfolio: {formatCurrency(profile.portfolio_value)} · Cash:{" "}
+              {formatCurrency(profile.available_cash)}
+            </p>
           </div>
-          <div>
-            <h1 className="font-serif text-[20px] md:text-[24px] font-medium">
-              {user.name}
-            </h1>
-            <div className="font-mono text-[12.5px] text-paper-dim">{user.email}</div>
-          </div>
-        </div>
-        <button
-          onClick={handleDeleteUser}
-          onBlur={() => setConfirmingDelete(false)}
-          className={`text-[13px] px-3.5 py-1.5 shrink-0 ${
-            confirmingDelete
-              ? "bg-rust text-paper border border-rust"
-              : "border border-rust text-rust"
-          }`}
-        >
-          {confirmingDelete ? "Confirm delete" : "Delete user"}
-        </button>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-[900px]">
-        {/* Account details */}
-        <section>
-          <h2 className="font-mono text-[12.5px] text-gold mb-5">
-            ACCOUNT DETAILS
-          </h2>
-          <div className="flex flex-col gap-5">
-            <div>
-              <label className="block text-[13px] text-paper-dim mb-2">
-                Status
-              </label>
+          {message && <p className="mb-6 text-paper-dim text-[13.5px]">{message}</p>}
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-4">VERIFICATION STATUS</h2>
+            <div className="flex flex-wrap items-center gap-3">
               <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as AdminUser["status"])}
-                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
+                value={statusDraft}
+                onChange={(event) => setStatusDraft(event.target.value as Profile["status"])}
+                className={`bg-slate-2 border p-3 ${statusColor(statusDraft)}`}
               >
-                {statusOptions.map((s) => (
+                {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-[13px] text-paper-dim mb-2">
-                Portfolio value (USD)
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={portfolioValue}
-                onChange={(e) => setPortfolioValue(e.target.value)}
-                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] font-mono focus:outline-none focus:border-gold"
-              />
-            </div>
-            <div>
-              <label className="block text-[13px] text-paper-dim mb-2">
-                Available cash (USD)
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={availableCash}
-                onChange={(e) => setAvailableCash(e.target.value)}
-                className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px] font-mono focus:outline-none focus:border-gold"
-              />
-            </div>
-            <div className="flex items-center gap-3">
               <button
-                onClick={handleSaveDetails}
-                className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5"
+                onClick={saveStatus}
+                disabled={savingStatus || statusDraft === profile.status}
+                className="bg-gold text-ink px-5 py-2.5 disabled:opacity-40"
               >
-                Save changes
-              </button>
-              {saved && <span className="text-[13px] text-moss">Saved</span>}
-            </div>
-          </div>
-        </section>
-
-        {/* Record a payment */}
-        <section>
-          <h2 className="font-mono text-[12.5px] text-gold mb-5">
-            RECORD A PAYMENT
-          </h2>
-          <div className="bg-slate border border-line px-6 py-6 mb-5">
-            <div className="flex flex-col gap-4">
-              <div>
-                <label className="block text-[13px] text-paper-dim mb-2">
-                  Type
-                </label>
-                <select
-                  value={paymentType}
-                  onChange={(e) => setPaymentType(e.target.value as PaymentLogEntry["type"])}
-                  className="w-full bg-slate-2 border border-line text-paper px-4 py-2.5 text-[14px] focus:outline-none focus:border-gold"
-                >
-                  <option>Deposit</option>
-                  <option>Growth adjustment</option>
-                  <option>Withdrawal</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[13px] text-paper-dim mb-2">
-                  Amount (USD)
-                </label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="e.g. 500"
-                  className="w-full bg-slate-2 border border-line text-paper placeholder:text-paper-dim px-4 py-2.5 text-[14px] font-mono focus:outline-none focus:border-gold"
-                />
-              </div>
-              <div>
-                <label className="block text-[13px] text-paper-dim mb-2">
-                  Note (optional)
-                </label>
-                <input
-                  type="text"
-                  value={paymentNote}
-                  onChange={(e) => setPaymentNote(e.target.value)}
-                  placeholder="e.g. Manual BTC deposit credit"
-                  className="w-full bg-slate-2 border border-line text-paper placeholder:text-paper-dim px-4 py-2.5 text-[14px] focus:outline-none focus:border-gold"
-                />
-              </div>
-              <button
-                onClick={handleApplyPayment}
-                disabled={!paymentAmount}
-                className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 disabled:opacity-40"
-              >
-                Apply to portfolio value
+                {savingStatus ? "Saving…" : "Save status"}
               </button>
             </div>
-          </div>
+          </section>
 
-          <div className="text-[12px] font-mono text-paper-dim mb-3">
-            THIS SESSION&apos;S LOG
-          </div>
-          {log.length === 0 ? (
-            <div className="text-[13px] text-paper-dim border border-line border-dashed px-4 py-4">
-              No adjustments applied yet.
-            </div>
-          ) : (
-            <div className="border-t border-line">
-              {log.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between py-3 border-b border-line text-[13.5px]"
-                >
-                  <div>
-                    <div>{entry.type}</div>
-                    <div className="text-[11.5px] text-paper-dim mt-0.5">
-                      {entry.note}
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-4">PENDING DEPOSIT REQUESTS</h2>
+
+            {pendingRequests.length === 0 ? (
+              <p className="text-paper-dim">No pending deposit requests.</p>
+            ) : (
+              <div className="space-y-4">
+                {pendingRequests.map((req) => (
+                  <div key={req.id} className="border border-line p-4">
+                    <p className="text-paper">
+                      Claims to have sent{" "}
+                      <span className="text-gold font-mono">
+                        {req.claimed_amount} {req.crypto_currency}
+                      </span>
+                    </p>
+                    {req.tx_hash && (
+                      <p className="mt-1 text-[12.5px] text-paper-dim break-all font-mono">
+                        Tx hash: {req.tx_hash}
+                      </p>
+                    )}
+                    <p className="mt-1 text-[12px] text-paper-dim">
+                      Submitted {new Date(req.created_at).toLocaleString()}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="USD amount to credit"
+                        value={reviewAmounts[req.id] ?? ""}
+                        onChange={(event) =>
+                          setReviewAmounts((prev) => ({ ...prev, [req.id]: event.target.value }))
+                        }
+                        className="bg-slate-2 border border-line p-3 w-48"
+                      />
+                      <button
+                        onClick={() => reviewRequest(req.id, "Confirmed")}
+                        disabled={reviewingId === req.id}
+                        className="bg-moss text-ink px-4 py-2.5 disabled:opacity-40"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => reviewRequest(req.id, "Rejected")}
+                        disabled={reviewingId === req.id}
+                        className="border border-rust text-rust px-4 py-2.5 disabled:opacity-40"
+                      >
+                        Reject
+                      </button>
                     </div>
                   </div>
-                  <span
-                    className={`font-mono text-[13.5px] ${
-                      entry.amount < 0 ? "text-rust" : "text-moss"
-                    }`}
-                  >
-                    {entry.amount < 0 ? "-" : "+"}
-                    {formatCurrency(Math.abs(entry.amount))}
-                  </span>
+                ))}
+              </div>
+            )}
+
+            {reviewedRequests.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-line space-y-2">
+                {reviewedRequests.map((req) => (
+                  <div key={req.id} className="flex justify-between text-[13.5px]">
+                    <span className="text-paper-dim">
+                      {req.claimed_amount} {req.crypto_currency}
+                    </span>
+                    <span className={`font-mono text-[12px] px-2 py-1 border ${statusColor(req.status)}`}>
+                      {req.status.toUpperCase()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-4">RECORD A TRANSACTION</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select
+                value={type}
+                onChange={(event) => setType(event.target.value)}
+                className="bg-slate-2 border border-line p-3"
+              >
+                <option>Deposit</option>
+                <option>Growth</option>
+                <option>Withdraw</option>
+              </select>
+              <input
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Amount (USD)"
+                className="bg-slate-2 border border-line p-3"
+              />
+              <input
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="Note (optional)"
+                className="bg-slate-2 border border-line p-3"
+              />
+            </div>
+            <button onClick={record} className="mt-4 bg-gold text-ink px-5 py-2.5">
+              Record transaction
+            </button>
+          </section>
+
+          <h2 className="font-serif text-[20px] mb-4">Transaction history</h2>
+          {transactions.length === 0 ? (
+            <p className="text-paper-dim">No transactions yet.</p>
+          ) : (
+            <div className="border-t border-line">
+              {transactions.map((tx) => (
+                <div key={tx.id} className="flex justify-between py-4 border-b border-line">
+                  <div>
+                    {tx.type}
+                    {tx.crypto_currency && (
+                      <span className="text-paper-dim">
+                        {" "}
+                        — {tx.crypto_amount} {tx.crypto_currency}
+                      </span>
+                    )}
+                    {tx.note && <span className="text-paper-dim"> — {tx.note}</span>}
+                  </div>
+                  <span className="font-mono">{formatCurrency(tx.amount)}</span>
                 </div>
               ))}
             </div>
           )}
-        </section>
-      </div>
-
-      {/* Transaction history */}
-      <div className="mt-10 max-w-[900px]">
-        <h2 className="font-mono text-[12.5px] text-gold mb-5">
-          TRANSACTION HISTORY
-        </h2>
-        {userTransactions.length === 0 ? (
-          <div className="border border-line border-dashed px-6 py-8 text-center">
-            <div className="text-[14.5px] text-paper-dim">
-              This user has no transactions yet.
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto -mx-5 px-5 md:mx-0 md:px-0">
-            <table className="w-full border-collapse min-w-[560px]">
-              <thead>
-                <tr>
-                  <th className="text-left font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
-                    Date
-                  </th>
-                  <th className="text-left font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
-                    Type
-                  </th>
-                  <th className="text-right font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
-                    Amount
-                  </th>
-                  <th className="text-right font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
-                    Value
-                  </th>
-                  <th className="text-right font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {userTransactions.map((tx) => (
-                  <TransactionTableRow key={tx.id} tx={tx} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
