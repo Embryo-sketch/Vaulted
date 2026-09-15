@@ -2,15 +2,45 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import AuthShell from "@/components/AuthShell";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO: replace with real account creation once the backend is wired up
-    router.push("/dashboard");
+    setError(null);
+    setMessage(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const supabase = createClient();
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email: String(formData.get("email")),
+      password: String(formData.get("password")),
+      options: {
+        data: { full_name: String(formData.get("name")) },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    setIsSubmitting(false);
+    if (signUpError) {
+      setError(signUpError.message);
+      return;
+    }
+    if (!data.session) {
+      setMessage("Check your email to confirm your account, then log in.");
+      return;
+    }
+
+    router.replace("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -25,6 +55,7 @@ export default function SignupPage() {
           </label>
           <input
             id="name"
+            name="name"
             type="text"
             placeholder="Jane Doe"
             className="w-full bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
@@ -40,6 +71,7 @@ export default function SignupPage() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             placeholder="you@example.com"
             className="w-full bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
@@ -55,6 +87,7 @@ export default function SignupPage() {
           </label>
           <input
             id="password"
+            name="password"
             type="password"
             placeholder="At least 8 characters"
             className="w-full bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
@@ -63,10 +96,13 @@ export default function SignupPage() {
 
         <button
           type="submit"
+          disabled={isSubmitting}
           className="bg-gold text-ink font-medium text-[15px] py-3.5 mt-2"
         >
-          Create account
+          {isSubmitting ? "Creating account…" : "Create account"}
         </button>
+        {error && <p className="text-[13px] text-red-300">{error}</p>}
+        {message && <p className="text-[13px] text-paper-dim">{message}</p>}
       </form>
 
       <p className="text-[12.5px] text-paper-dim mt-6 leading-relaxed">

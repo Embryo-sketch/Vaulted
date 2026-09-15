@@ -2,15 +2,35 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import AuthShell from "@/components/AuthShell";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // TODO: replace with real authentication once the backend is wired up
-    router.push("/dashboard");
+    setError(null);
+    setIsSubmitting(true);
+
+    const formData = new FormData(e.currentTarget);
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: String(formData.get("email")),
+      password: String(formData.get("password")),
+    });
+
+    setIsSubmitting(false);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+
+    router.replace("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -25,6 +45,7 @@ export default function LoginPage() {
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             placeholder="you@example.com"
             className="w-full bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
@@ -42,6 +63,7 @@ export default function LoginPage() {
           </div>
           <input
             id="password"
+            name="password"
             type="password"
             placeholder="••••••••"
             className="w-full bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-3 text-[14.5px] focus:outline-none focus:border-gold"
@@ -50,10 +72,12 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          disabled={isSubmitting}
           className="bg-gold text-ink font-medium text-[15px] py-3.5 mt-2"
         >
-          Log in
+          {isSubmitting ? "Logging in…" : "Log in"}
         </button>
+        {error && <p className="text-[13px] text-red-300">{error}</p>}
       </form>
 
       <p className="text-[14px] text-paper-dim mt-8">
