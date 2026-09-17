@@ -111,7 +111,7 @@ function SidebarContent({
             );
           })}
           <SignOutButton
-            className="text-[13px] py-1.5 text-paper-dim hover:text-paper"
+            className="w-full text-[13px] py-1.5 text-paper-dim hover:text-paper"
           />
         </div>
       </div>
