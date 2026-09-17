@@ -17,33 +17,8 @@ export default function WithdrawPage() {
             Contact your broker to withdraw
           </h2>
           <p className="text-paper-dim text-[14.5px] leading-relaxed mb-6">
-            Withdrawals on Vaulted are handled directly by your assigned
-            broker to keep your funds secure. Reach out to them with your
-            account details and the amount you&apos;d like to withdraw, and
-            they&apos;ll take it from there.
+            Please contact your broker directly to arrange your withdrawal.
           </p>
-
-          <div className="border-t border-line pt-6 flex flex-col gap-4">
-            <div className="flex justify-between text-[13.5px]">
-              <span className="text-paper-dim">Broker email</span>
-              <span className="font-mono">broker@vaulted.com</span>
-            </div>
-            <div className="flex justify-between text-[13.5px]">
-              <span className="text-paper-dim">Broker phone</span>
-              <span className="font-mono">+1 (555) 010-0199</span>
-            </div>
-            <div className="flex justify-between text-[13.5px]">
-              <span className="text-paper-dim">Support hours</span>
-              <span className="font-mono">Mon–Fri, 9am–6pm</span>
-            </div>
-          </div>
-
-          <a
-            href="mailto:broker@vaulted.com"
-            className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 mt-7 inline-block"
-          >
-            Email your broker
-          </a>
         </div>
       </div>
     </DashboardShell>

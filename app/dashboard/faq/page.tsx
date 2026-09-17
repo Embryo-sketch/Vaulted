@@ -19,7 +19,7 @@ const faqs: FaqItem[] = [
   },
   {
     q: "How do I withdraw?",
-    a: "Withdrawals are handled directly by your assigned broker to keep funds secure. Visit the Withdraw page for their contact details and reach out with your account information and the amount you'd like to withdraw.",
+    a: "Withdrawals are handled directly by your assigned broker. Please contact your broker to arrange a withdrawal.",
   },
   {
     q: "Is my money safe?",

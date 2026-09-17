@@ -8,6 +8,7 @@ import SignOutButton from "@/components/SignOutButton";
 import { createClient } from "@/lib/supabase/client";
 import AccountVerificationNotice from "@/components/AccountVerificationNotice";
 import NotificationBell from "@/components/NotificationBell";
+import SessionTimeout from "@/components/SessionTimeout";
 
 function getInitials(name: string, email: string): string {
   const trimmed = name.trim();
@@ -145,6 +146,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-ink text-paper flex">
+      <SessionTimeout />
       <AccountVerificationNotice />
       {/* Desktop sidebar — sticky to the viewport, independent of page scroll */}
       <aside className="w-[220px] shrink-0 border-r border-line hidden md:flex flex-col sticky top-0 h-screen py-8">
