@@ -50,6 +50,8 @@ export default function ChatWidget() {
       </div>
       <div className="border-t border-line p-3 flex gap-2"><input disabled={!userId} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void send(); }} placeholder={userId ? "Type a message..." : "Log in to chat"} className="flex-1 bg-slate-2 border border-line text-paper px-3 py-2"/><button disabled={!userId || !input.trim()} onClick={() => void send()} className="bg-gold text-ink px-3 disabled:opacity-40">Send</button></div>
     </div>}
-    <button onClick={() => setOpen(!open)} aria-label="Open chat" className="w-12 h-12 rounded-full bg-gold text-ink flex items-center justify-center shadow-lg">{open ? "×" : "◯"}</button>
+    <button onClick={() => setOpen(!open)} aria-label={open ? "Close support chat" : "Open support chat"} className="w-12 h-12 rounded-full bg-gold text-ink flex items-center justify-center shadow-lg border border-paper/20 hover:bg-paper transition-colors">
+      {open ? <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" /></svg> : <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-8 7.48 8.3 8.3 0 0 1-3.14-.71L4 20l1.55-4.24A7.43 7.43 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" strokeLinecap="round" strokeLinejoin="round" /><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01" strokeLinecap="round" strokeWidth="2.5" /></svg>}
+    </button>
   </div>;
 }

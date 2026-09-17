@@ -44,14 +44,14 @@ export default function AdminSupportPage() {
     <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">Support</h1>
     <p className="text-paper-dim text-[14.5px] mb-8">Messages sent from the customer chat box.</p>
     {error && <p className="mb-4 text-rust">{error}</p>}
-    <div className="border border-line grid grid-cols-1 md:grid-cols-[260px_1fr] h-[560px]">
-      <div className="border-b md:border-b-0 md:border-r border-line overflow-y-auto">
+    <div className="border border-line grid grid-cols-1 md:grid-cols-[260px_1fr] md:h-[560px]">
+      <div className="border-b md:border-b-0 md:border-r border-line overflow-x-auto md:overflow-y-auto">
         {profiles.length === 0 ? <p className="p-5 text-paper-dim text-[13px]">No support messages yet.</p> : profiles.map((profile) => {
           const last = messages.filter((message) => message.user_id === profile.id).at(-1);
           return <button key={profile.id} onClick={() => setActiveUserId(profile.id)} className={`w-full text-left px-5 py-4 border-b border-line ${activeUserId === profile.id ? "bg-slate" : "hover:bg-slate/40"}`}><div>{profile.full_name || "Unnamed user"}</div><div className="text-[12px] text-paper-dim truncate">{last?.body}</div></button>;
         })}
       </div>
-      <div className="flex flex-col min-h-0">
+      <div className="flex flex-col min-h-[400px] md:min-h-0">
         {active ? <><div className="border-b border-line px-5 py-4"><div>{active.full_name || "Unnamed user"}</div><div className="text-[12px] text-paper-dim">{active.email}</div></div><div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">{activeMessages.map((message) => <div key={message.id} className={`max-w-[75%] px-3.5 py-2.5 text-[13.5px] ${message.sender === "user" ? "bg-slate-2 border border-line self-start" : "bg-gold text-ink self-end"}`}>{message.body}</div>)}</div><div className="border-t border-line p-3 flex gap-2"><input value={reply} onChange={(event) => setReply(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void send(); }} placeholder="Type a reply..." className="flex-1 bg-slate border border-line text-paper px-3 py-2"/><button onClick={() => void send()} className="bg-gold text-ink px-4">Send</button></div></> : <div className="flex-1 flex items-center justify-center text-paper-dim">Select a conversation.</div>}
       </div>
     </div>
