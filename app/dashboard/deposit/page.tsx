@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardShell from "@/components/DashboardShell";
 import CryptoIcon from "@/components/CryptoIcon";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +30,18 @@ export default function DepositPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verified, setVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    async function checkVerification() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("profiles").select("status").eq("id", user.id).single();
+      setVerified(data?.status === "Verified");
+    }
+    void checkVerification();
+  }, []);
 
   function handleCopy() {
     if (!selected) return;
@@ -39,6 +51,10 @@ export default function DepositPage() {
   }
 
   async function handleSubmitClaim() {
+    if (!verified) {
+      setError("Your account must be verified before you can submit a deposit claim.");
+      return;
+    }
     if (!selected) return;
     const amount = Number(claimAmount);
     if (!amount || amount <= 0) {
@@ -65,6 +81,10 @@ export default function DepositPage() {
     setSubmitted(true);
     setClaimAmount("");
     setTxHash("");
+  }
+
+  if (verified === false) {
+    return <DashboardShell><div className="max-w-[560px] bg-slate border border-gold px-6 py-8"><div className="font-mono text-gold text-[12px] mb-3">ACCOUNT NOT VERIFIED</div><h1 className="font-serif text-[24px] mb-3">Deposits are unavailable</h1><p className="text-paper-dim text-[14px] leading-relaxed">An administrator must verify your account before you can make transactions or submit deposit claims.</p></div></DashboardShell>;
   }
 
   function reset() {

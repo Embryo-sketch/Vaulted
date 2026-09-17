@@ -28,16 +28,17 @@ const assets: Asset[] = [
 export default function MarketsPage() {
   return (
     <DashboardShell>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <h1 className="font-serif text-[26px] font-medium">Markets</h1>
         <input
           type="text"
           placeholder="Search assets..."
-          className="bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-2 text-[14px] w-[220px] focus:outline-none focus:border-gold"
+          className="bg-slate border border-line text-paper placeholder:text-paper-dim px-4 py-2 text-[14px] w-full sm:w-[220px] focus:outline-none focus:border-gold"
         />
       </div>
 
-      <table className="w-full border-collapse">
+      <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+      <table className="w-full min-w-[680px] border-collapse">
         <thead>
           <tr>
             <th className="text-left font-mono text-[12px] text-paper-dim font-normal pb-3 border-b border-line">
@@ -112,6 +113,7 @@ export default function MarketsPage() {
           ))}
         </tbody>
       </table>
+      </div>
     </DashboardShell>
   );
 }

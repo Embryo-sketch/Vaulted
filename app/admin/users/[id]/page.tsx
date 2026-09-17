@@ -33,6 +33,15 @@ type DepositRequest = {
   created_at: string;
 };
 
+type KycSubmission = {
+  full_name: string;
+  date_of_birth: string;
+  house_address: string;
+  phone_number: string;
+  id_document_path: string;
+  status: "Submitted" | "Approved" | "Rejected";
+};
+
 const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
 
 function statusColor(status: string) {
@@ -47,6 +56,7 @@ export default function AdminUserDetailPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
+  const [kycSubmission, setKycSubmission] = useState<KycSubmission | null>(null);
 
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("Deposit");
@@ -61,7 +71,7 @@ export default function AdminUserDetailPage() {
 
   async function load() {
     const supabase = createClient();
-    const [{ data: user }, { data: history }, { data: requests }] = await Promise.all([
+    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, status, portfolio_value, available_cash")
@@ -73,6 +83,11 @@ export default function AdminUserDetailPage() {
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
       supabase
+        .from("kyc_submissions")
+        .select("full_name, date_of_birth, house_address, phone_number, id_document_path, status")
+        .eq("user_id", id)
+        .maybeSingle(),
+      supabase
         .from("deposit_requests")
         .select("id, crypto_currency, claimed_amount, tx_hash, status, created_at")
         .eq("user_id", id)
@@ -83,6 +98,7 @@ export default function AdminUserDetailPage() {
     if (user) setStatusDraft(user.status);
     setTransactions(history ?? []);
     setDepositRequests(requests ?? []);
+    setKycSubmission(kyc);
   }
 
   useEffect(() => {
@@ -121,9 +137,32 @@ export default function AdminUserDetailPage() {
     setSavingStatus(false);
     if (error) setMessage(error.message);
     else {
+      if (kycSubmission && statusDraft === "Verified") {
+        const { error: kycError } = await createClient()
+          .from("kyc_submissions")
+          .update({ status: "Approved", updated_at: new Date().toISOString() })
+          .eq("user_id", id);
+        if (kycError) {
+          setMessage(kycError.message);
+          return;
+        }
+        setKycSubmission({ ...kycSubmission, status: "Approved" });
+      }
       setProfile({ ...profile, status: statusDraft });
       setMessage("Verification status updated.");
     }
+  }
+
+  async function openIdDocument() {
+    if (!kycSubmission) return;
+    const { data, error } = await createClient().storage
+      .from("kyc-documents")
+      .createSignedUrl(kycSubmission.id_document_path, 60);
+    if (error || !data) {
+      setMessage(error?.message ?? "Unable to open the ID document.");
+      return;
+    }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
   async function reviewRequest(requestId: string, decision: "Confirmed" | "Rejected") {
@@ -174,6 +213,15 @@ export default function AdminUserDetailPage() {
           </div>
 
           {message && <p className="mb-6 text-paper-dim text-[13.5px]">{message}</p>}
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-4">KYC SUBMISSION</h2>
+            {!kycSubmission ? <p className="text-paper-dim text-[13.5px]">No KYC submission yet.</p> : <div className="text-[14px] flex flex-col gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><p><span className="text-paper-dim">Name: </span>{kycSubmission.full_name}</p><p><span className="text-paper-dim">Date of birth: </span>{kycSubmission.date_of_birth}</p><p><span className="text-paper-dim">Phone: </span>{kycSubmission.phone_number}</p><p><span className="text-paper-dim">KYC status: </span>{kycSubmission.status}</p></div>
+              <p><span className="text-paper-dim">Address: </span>{kycSubmission.house_address}</p>
+              <button onClick={openIdDocument} className="border border-gold text-gold px-3 py-2 text-[13px] self-start">Open submitted ID</button>
+            </div>}
+          </section>
 
           <section className="bg-slate border border-line p-6 mb-10">
             <h2 className="font-mono text-gold text-[13px] mb-4">VERIFICATION STATUS</h2>
@@ -279,7 +327,7 @@ export default function AdminUserDetailPage() {
                 onChange={(event) => setType(event.target.value)}
                 className="bg-slate-2 border border-line p-3"
               >
-                <option>Deposit</option>
+                <option value="Deposit">Cash deposit</option>
                 <option>Growth</option>
                 <option>Withdraw</option>
               </select>

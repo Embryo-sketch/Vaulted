@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import {
   INVESTMENT_TIERS,
@@ -54,16 +55,13 @@ export default function InvestPage() {
                 {tier.description}
               </p>
             </div>
-            <div className="mt-5 pt-4 border-t border-line flex items-center justify-between">
+            <div className="mt-5 pt-4 border-t border-line flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <span className="text-[11.5px] text-paper-dim">
                 Annual percentage rate
               </span>
-              <button
-                onClick={() => router.push("/dashboard/deposit")}
-                className="text-[12.5px] text-ink bg-gold px-3 py-1.5 font-medium"
-              >
-                Deposit
-              </button>
+              <Link href="/dashboard/deposit" className="text-[13px] text-gold border-b border-gold self-start sm:self-auto">
+                Invest now
+              </Link>
             </div>
           </div>
         ))}

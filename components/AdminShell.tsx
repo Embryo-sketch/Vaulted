@@ -16,8 +16,8 @@ export default function AdminShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-ink text-paper flex flex-col">
-      <header className="border-b border-line px-5 md:px-10 py-4 flex items-center justify-between sticky top-0 bg-ink z-40">
-        <div className="flex items-center gap-4">
+      <header className="border-b border-line px-4 md:px-10 py-4 flex items-center justify-between sticky top-0 bg-ink z-40 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Link href="/admin" className="flex items-center gap-2.5 text-[17px]">
             <span className="relative w-4 h-4 border-[1.5px] border-gold inline-block">
               <span className="absolute inset-1 bg-gold" />
@@ -27,7 +27,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
               ADMIN
             </span>
           </Link>
-          <nav className="hidden sm:flex gap-1 ml-4">
+          <nav className="flex gap-1 overflow-x-auto ml-1 md:ml-4 min-w-0">
             <Link
               href="/admin"
               className={`text-[13.5px] px-3 py-1.5 ${
@@ -67,7 +67,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </Link>
           </nav>
         </div>
-        <SignOutButton className="text-[13px] text-paper-dim" />
+        <SignOutButton className="text-[13px] text-paper-dim shrink-0" />
       </header>
 
       <main className="flex-1 px-5 md:px-10 py-8">{children}</main>

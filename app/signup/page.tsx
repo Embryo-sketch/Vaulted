@@ -107,8 +107,16 @@ export default function SignupPage() {
           {isSubmitting ? "Creating account…" : "Create account"}
         </button>
         {error && <p className="text-[13px] text-red-300">{error}</p>}
-        {message && <p className="text-[13px] text-paper-dim">{message}</p>}
       </form>
+
+      {message && <div className="fixed inset-0 z-[70] bg-ink/80 flex items-center justify-center p-5">
+        <div className="w-full max-w-[400px] bg-slate border border-gold p-6 md:p-8 shadow-xl">
+          <div className="font-mono text-gold text-[12px] mb-3">ONE MORE STEP</div>
+          <h2 className="font-serif text-[24px] mb-3">Check your email</h2>
+          <p className="text-paper-dim text-[14px] leading-relaxed">{message}</p>
+          <Link href="/login" className="inline-block mt-6 bg-gold text-ink font-medium px-5 py-2.5 text-[14px]">Go to log in</Link>
+        </div>
+      </div>}
 
       <p className="text-[12.5px] text-paper-dim mt-6 leading-relaxed">
         By continuing, you agree to Vaulted&apos;s Terms and acknowledge the

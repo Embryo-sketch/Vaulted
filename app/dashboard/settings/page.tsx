@@ -26,6 +26,16 @@ export default function SettingsPage() {
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  // KYC verification
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [houseAddress, setHouseAddress] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [idDocument, setIdDocument] = useState<File | null>(null);
+  const [kycStatus, setKycStatus] = useState<string | null>(null);
+  const [submittingKyc, setSubmittingKyc] = useState(false);
+  const [kycMessage, setKycMessage] = useState<string | null>(null);
+  const [kycError, setKycError] = useState<string | null>(null);
+
   // Security
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -67,10 +77,65 @@ export default function SettingsPage() {
         setEmail(data.email ?? user.email ?? "");
         setOriginalEmail(data.email ?? user.email ?? "");
       }
+      const { data: kyc } = await supabase
+        .from("kyc_submissions")
+        .select("full_name, date_of_birth, house_address, phone_number, status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (kyc) {
+        setFullName((current) => current || kyc.full_name);
+        setDateOfBirth(kyc.date_of_birth);
+        setHouseAddress(kyc.house_address);
+        setPhoneNumber(kyc.phone_number);
+        setKycStatus(kyc.status);
+      }
       setLoadingProfile(false);
     }
     void load();
   }, []);
+
+  async function handleSubmitKyc() {
+    if (!userId || !dateOfBirth || !houseAddress.trim() || !phoneNumber.trim() || !idDocument) {
+      setKycError("Complete every field and attach your government-issued ID.");
+      return;
+    }
+    if (idDocument.size > 10 * 1024 * 1024) {
+      setKycError("Your ID document must be 10 MB or smaller.");
+      return;
+    }
+    setSubmittingKyc(true);
+    setKycError(null);
+    setKycMessage(null);
+    const safeName = idDocument.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const documentPath = `${userId}/${Date.now()}-${safeName}`;
+    const supabase = createClient();
+    const { error: uploadError } = await supabase.storage
+      .from("kyc-documents")
+      .upload(documentPath, idDocument, { contentType: idDocument.type, upsert: false });
+    if (uploadError) {
+      setKycError(uploadError.message);
+      setSubmittingKyc(false);
+      return;
+    }
+    const { error: submitError } = await supabase.from("kyc_submissions").upsert({
+      user_id: userId,
+      full_name: fullName.trim(),
+      date_of_birth: dateOfBirth,
+      house_address: houseAddress.trim(),
+      phone_number: phoneNumber.trim(),
+      id_document_path: documentPath,
+      status: "Submitted",
+      updated_at: new Date().toISOString(),
+    });
+    setSubmittingKyc(false);
+    if (submitError) {
+      setKycError(submitError.message);
+      return;
+    }
+    setKycStatus("Submitted");
+    setIdDocument(null);
+    setKycMessage("Your verification details have been submitted for review.");
+  }
 
   async function handleSaveProfile() {
     if (!userId) return;
@@ -170,6 +235,25 @@ export default function SettingsPage() {
       </h1>
 
       <div className="flex flex-col gap-10 max-w-[560px]">
+        {/* KYC */}
+        <section id="kyc" className="bg-slate border border-gold px-6 py-6 scroll-mt-24">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <h2 className="font-mono text-[12.5px] text-gold">KYC VERIFICATION</h2>
+            {kycStatus && <span className="text-[12px] font-mono text-gold">{kycStatus.toUpperCase()}</span>}
+          </div>
+          <p className="text-[13.5px] text-paper-dim mb-6">Submit your details and a government-issued ID. An administrator will review your account before enabling transactions.</p>
+          <div className="flex flex-col gap-4">
+            <div><label className="block text-[13px] text-paper-dim mb-2">Full name</label><input value={fullName} onChange={(event) => setFullName(event.target.value)} className="w-full bg-slate-2 border border-line text-paper px-4 py-3" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Date of birth</label><input type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} className="w-full bg-slate-2 border border-line text-paper px-4 py-3" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">House address</label><textarea value={houseAddress} onChange={(event) => setHouseAddress(event.target.value)} rows={3} className="w-full bg-slate-2 border border-line text-paper px-4 py-3" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Phone number</label><input type="tel" value={phoneNumber} onChange={(event) => setPhoneNumber(event.target.value)} className="w-full bg-slate-2 border border-line text-paper px-4 py-3" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Government-issued ID</label><input type="file" accept="image/*,.pdf" onChange={(event) => setIdDocument(event.target.files?.[0] ?? null)} className="w-full text-[13px] text-paper-dim" />{idDocument && <p className="mt-2 text-[12px] text-paper-dim">{idDocument.name}</p>}</div>
+            {kycError && <p className="text-[13px] text-rust">{kycError}</p>}
+            {kycMessage && <p className="text-[13px] text-moss">{kycMessage}</p>}
+            <button onClick={handleSubmitKyc} disabled={submittingKyc || loadingProfile} className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 self-start disabled:opacity-40">{submittingKyc ? "Submitting…" : "Submit for verification"}</button>
+          </div>
+        </section>
+
         {/* Profile */}
         <section>
           <h2 className="font-mono text-[12.5px] text-gold mb-5">PROFILE</h2>

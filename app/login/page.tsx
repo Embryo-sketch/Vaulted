@@ -33,6 +33,9 @@ export default function LoginPage() {
         return;
       }
 
+      if (!isAdmin(user?.app_metadata)) {
+        window.sessionStorage.setItem("vaulted-show-verification-notice", "true");
+      }
       router.replace(isAdmin(user?.app_metadata) ? "/admin" : "/dashboard");
       router.refresh();
     } catch (error) {

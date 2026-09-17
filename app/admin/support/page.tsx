@@ -1,146 +1,59 @@
 "use client";
 
-import { useState } from "react";
-import { SUPPORT_CONVERSATIONS, type SupportConversation } from "@/lib/admin-support-data";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+
+type Profile = { id: string; full_name: string; email: string };
+type Message = { id: string; user_id: string; sender: "user" | "admin"; body: string };
 
 export default function AdminSupportPage() {
-  const [conversations, setConversations] = useState<SupportConversation[]>(
-    SUPPORT_CONVERSATIONS
-  );
-  const [activeUserId, setActiveUserId] = useState<string>(
-    SUPPORT_CONVERSATIONS[0]?.userId ?? ""
-  );
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeUserId, setActiveUserId] = useState("");
   const [reply, setReply] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const active = conversations.find((c) => c.userId === activeUserId);
-
-  function handleSend() {
-    const text = reply.trim();
-    if (!text || !active) return;
-
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.userId === activeUserId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                {
-                  id: Date.now().toString(),
-                  from: "admin" as const,
-                  text,
-                  time: "Just now",
-                },
-              ],
-            }
-          : c
-      )
-    );
-    setReply("");
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
+  async function load() {
+    const supabase = createClient();
+    const [{ data: users, error: usersError }, { data: chat, error: chatError }] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, email"),
+      supabase.from("support_messages").select("id, user_id, sender, body").order("created_at"),
+    ]);
+    if (usersError || chatError) setError(usersError?.message ?? chatError?.message ?? "Unable to load support.");
+    else {
+      const loadedMessages = chat ?? [];
+      setProfiles((users ?? []).filter((user) => loadedMessages.some((message) => message.user_id === user.id)));
+      setMessages(loadedMessages);
+      setActiveUserId((current) => current || loadedMessages[0]?.user_id || "");
     }
   }
 
-  return (
-    <div>
-      <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">
-        Support
-      </h1>
-      <p className="text-paper-dim text-[14.5px] mb-8">
-        Conversations started by users from the chat widget appear here.
-      </p>
+  useEffect(() => { const timer = setTimeout(() => { void load(); }, 0); return () => clearTimeout(timer); }, []);
+  const active = profiles.find((profile) => profile.id === activeUserId);
+  const activeMessages = messages.filter((message) => message.user_id === activeUserId);
 
-      <div className="border border-line grid grid-cols-1 md:grid-cols-[260px_1fr] h-[560px]">
-        {/* Conversation list */}
-        <div className="border-b md:border-b-0 md:border-r border-line overflow-y-auto max-h-[220px] md:max-h-none">
-          {conversations.map((c) => {
-            const last = c.messages[c.messages.length - 1];
-            const isActive = c.userId === activeUserId;
-            return (
-              <button
-                key={c.userId}
-                onClick={() => setActiveUserId(c.userId)}
-                className={`w-full text-left px-5 py-4 border-b border-line transition-colors ${
-                  isActive ? "bg-slate" : "hover:bg-slate/40"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[14px] text-paper">{c.userName}</span>
-                  <span className="text-[11px] font-mono text-paper-dim">
-                    {last?.time}
-                  </span>
-                </div>
-                <div className="text-[12.5px] text-paper-dim mt-1 truncate">
-                  {last?.from === "admin" ? "You: " : ""}
-                  {last?.text}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+  async function send() {
+    const body = reply.trim();
+    if (!body || !activeUserId) return;
+    const { error: sendError } = await createClient().from("support_messages").insert({ user_id: activeUserId, sender: "admin", body });
+    if (sendError) setError(sendError.message);
+    else { setReply(""); await load(); }
+  }
 
-        {/* Active thread */}
-        <div className="flex flex-col min-h-0">
-          {active ? (
-            <>
-              <div className="border-b border-line px-5 py-4 shrink-0">
-                <div className="text-[14.5px] text-paper">{active.userName}</div>
-                <div className="text-[12px] font-mono text-paper-dim">
-                  {active.userEmail}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
-                {active.messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`max-w-[75%] px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
-                      m.from === "user"
-                        ? "bg-slate-2 border border-line text-paper self-start"
-                        : "bg-gold text-ink self-end"
-                    }`}
-                  >
-                    {m.text}
-                    <div
-                      className={`text-[10.5px] mt-1.5 font-mono ${
-                        m.from === "user" ? "text-paper-dim" : "text-ink/60"
-                      }`}
-                    >
-                      {m.time}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="border-t border-line p-3 flex items-center gap-2 shrink-0">
-                <input
-                  type="text"
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Type a reply..."
-                  className="flex-1 bg-slate border border-line text-paper placeholder:text-paper-dim px-3.5 py-2.5 text-[13.5px] focus:outline-none focus:border-gold"
-                />
-                <button
-                  onClick={handleSend}
-                  className="bg-gold text-ink px-4 py-2.5 text-[13.5px] font-medium shrink-0"
-                >
-                  Send
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-paper-dim text-[14px]">
-              No conversation selected.
-            </div>
-          )}
-        </div>
+  return <div>
+    <h1 className="font-serif text-[22px] md:text-[26px] font-medium mb-2">Support</h1>
+    <p className="text-paper-dim text-[14.5px] mb-8">Messages sent from the customer chat box.</p>
+    {error && <p className="mb-4 text-rust">{error}</p>}
+    <div className="border border-line grid grid-cols-1 md:grid-cols-[260px_1fr] h-[560px]">
+      <div className="border-b md:border-b-0 md:border-r border-line overflow-y-auto">
+        {profiles.length === 0 ? <p className="p-5 text-paper-dim text-[13px]">No support messages yet.</p> : profiles.map((profile) => {
+          const last = messages.filter((message) => message.user_id === profile.id).at(-1);
+          return <button key={profile.id} onClick={() => setActiveUserId(profile.id)} className={`w-full text-left px-5 py-4 border-b border-line ${activeUserId === profile.id ? "bg-slate" : "hover:bg-slate/40"}`}><div>{profile.full_name || "Unnamed user"}</div><div className="text-[12px] text-paper-dim truncate">{last?.body}</div></button>;
+        })}
+      </div>
+      <div className="flex flex-col min-h-0">
+        {active ? <><div className="border-b border-line px-5 py-4"><div>{active.full_name || "Unnamed user"}</div><div className="text-[12px] text-paper-dim">{active.email}</div></div><div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">{activeMessages.map((message) => <div key={message.id} className={`max-w-[75%] px-3.5 py-2.5 text-[13.5px] ${message.sender === "user" ? "bg-slate-2 border border-line self-start" : "bg-gold text-ink self-end"}`}>{message.body}</div>)}</div><div className="border-t border-line p-3 flex gap-2"><input value={reply} onChange={(event) => setReply(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void send(); }} placeholder="Type a reply..." className="flex-1 bg-slate border border-line text-paper px-3 py-2"/><button onClick={() => void send()} className="bg-gold text-ink px-4">Send</button></div></> : <div className="flex-1 flex items-center justify-center text-paper-dim">Select a conversation.</div>}
       </div>
     </div>
-  );
+  </div>;
 }
