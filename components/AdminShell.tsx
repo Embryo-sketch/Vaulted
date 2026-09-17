@@ -3,8 +3,8 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAdminNotifications } from "@/components/AdminNotificationsProvider";
 import SignOutButton from "@/components/SignOutButton";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -12,7 +12,6 @@ export default function AdminShell({ children }: { children: ReactNode }) {
   const isSupport = pathname.startsWith("/admin/support");
   const isSettings = pathname.startsWith("/admin/settings");
   const isNotifications = pathname.startsWith("/admin/notifications");
-  const { unreadCount } = useAdminNotifications();
 
   return (
     <div className="min-h-screen bg-ink text-paper flex flex-col">
@@ -46,16 +45,11 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </Link>
             <Link
               href="/admin/notifications"
-              className={`text-[13.5px] px-3 py-1.5 flex items-center gap-1.5 ${
+              className={`text-[13.5px] px-3 py-1.5 ${
                 isNotifications ? "text-paper bg-slate" : "text-paper-dim hover:text-paper"
               }`}
             >
               Notifications
-              {unreadCount > 0 && (
-                <span className="bg-gold text-ink text-[10px] font-mono w-4 h-4 rounded-full flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
             </Link>
             <Link
               href="/admin/settings"
@@ -67,7 +61,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </Link>
           </nav>
         </div>
-        <SignOutButton className="text-[13px] text-paper-dim shrink-0" />
+        <div className="flex items-center gap-3 shrink-0"><NotificationBell admin /><SignOutButton className="text-[13px] text-paper-dim" /></div>
       </header>
 
       <main className="flex-1 px-5 md:px-10 py-8">{children}</main>

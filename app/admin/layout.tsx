@@ -1,5 +1,4 @@
 import { AdminUsersProvider } from "@/components/AdminUsersProvider";
-import { AdminNotificationsProvider } from "@/components/AdminNotificationsProvider";
 import AdminShell from "@/components/AdminShell";
 
 export default function AdminLayout({
@@ -9,9 +8,7 @@ export default function AdminLayout({
 }) {
   return (
     <AdminUsersProvider>
-      <AdminNotificationsProvider>
-        <AdminShell>{children}</AdminShell>
-      </AdminNotificationsProvider>
+      <AdminShell>{children}</AdminShell>
     </AdminUsersProvider>
   );
 }

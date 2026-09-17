@@ -7,6 +7,7 @@ import PageFadeIn from "@/components/PageFadeIn";
 import SignOutButton from "@/components/SignOutButton";
 import { createClient } from "@/lib/supabase/client";
 import AccountVerificationNotice from "@/components/AccountVerificationNotice";
+import NotificationBell from "@/components/NotificationBell";
 
 function getInitials(name: string, email: string): string {
   const trimmed = name.trim();
@@ -22,6 +23,7 @@ const navItems = [
   { label: "Invest", href: "/dashboard/invest" },
   { label: "Deposit", href: "/dashboard/deposit" },
   { label: "Transactions", href: "/dashboard/transactions" },
+  { label: "Notifications", href: "/dashboard/notifications" },
   { label: "About Us", href: "/dashboard/about" },
   { label: "FAQ", href: "/dashboard/faq" },
 ];
@@ -192,6 +194,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-5 shrink-0">
+            <NotificationBell />
             <Link
               href="/dashboard/deposit"
               className="bg-gold text-ink text-[13px] md:text-[13.5px] font-medium px-3.5 md:px-4 py-2"
