@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import DashboardShell from "@/components/DashboardShell";
 import { createClient } from "@/lib/supabase/client";
 
@@ -102,12 +103,12 @@ export default function ProfilePage() {
             </div>
           </section>
 
-          <a
+          <Link
             href="/dashboard/settings"
             className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5 self-start"
           >
             Edit in Settings
-          </a>
+          </Link>
         </div>
       )}
     </DashboardShell>

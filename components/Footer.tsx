@@ -17,45 +17,45 @@ export default function Footer() {
             <h4 className="font-mono text-[12.5px] text-paper-dim mb-4">
               PRODUCT
             </h4>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            <Link href="/markets" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Markets
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/custody" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Custody
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/pricing" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Pricing
-            </a>
+            </Link>
           </div>
 
           <div>
             <h4 className="font-mono text-[12.5px] text-paper-dim mb-4">
               COMPANY
             </h4>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            <Link href="/about" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               About
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/security" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Security
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/careers" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Careers
-            </a>
+            </Link>
           </div>
 
           <div>
             <h4 className="font-mono text-[12.5px] text-paper-dim mb-4">
               LEGAL
             </h4>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            <Link href="/terms" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Terms
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/privacy" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Privacy
-            </a>
-            <a href="#" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
+            </Link>
+            <Link href="/disclosures" className="block text-[14px] text-paper mb-2.5 hover:text-gold transition-colors">
               Disclosures
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -69,3 +69,4 @@ export default function Footer() {
     </footer>
   );
 }
+import Link from "next/link";

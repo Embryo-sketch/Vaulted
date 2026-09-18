@@ -18,9 +18,9 @@ export default function Nav() {
 
         <div className="hidden md:flex gap-9 text-[14.5px] text-paper-dim">
           <a href="#invest" className="hover:text-paper transition-colors">Invest</a>
-          <a href="#" className="hover:text-paper transition-colors">Markets</a>
-          <a href="#" className="hover:text-paper transition-colors">How it works</a>
-          <a href="#" className="hover:text-paper transition-colors">Security</a>
+          <Link href="/markets" className="hover:text-paper transition-colors">Markets</Link>
+          <Link href="/how-it-works" className="hover:text-paper transition-colors">How it works</Link>
+          <Link href="/security" className="hover:text-paper transition-colors">Security</Link>
         </div>
 
         <div className="hidden md:flex items-center gap-5">
@@ -61,9 +61,9 @@ export default function Nav() {
       {open && (
         <div className="md:hidden border-t border-line bg-ink px-5 py-6 flex flex-col gap-1">
           <a href="#invest" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Invest</a>
-          <a href="#" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Markets</a>
-          <a href="#" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>How it works</a>
-          <a href="#" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Security</a>
+          <Link href="/markets" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Markets</Link>
+          <Link href="/how-it-works" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>How it works</Link>
+          <Link href="/security" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Security</Link>
 
           <div className="flex flex-col gap-3 mt-5">
             <Link
