@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Message = { id: string; sender: "user" | "admin"; body: string };
 
 export default function ChatWidget() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -40,6 +42,8 @@ export default function ChatWidget() {
     if (sendError) setError(sendError.message);
     else { setInput(""); await loadMessages(); }
   }
+
+  if (pathname.startsWith("/admin")) return null;
 
   return <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-3">
     {open && <div className="bg-slate border border-line w-[92vw] max-w-[340px] h-[440px] flex flex-col shadow-lg">

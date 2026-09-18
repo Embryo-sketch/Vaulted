@@ -1,10 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [investHref, setInvestHref] = useState("/login");
+
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data: { user } }) => setInvestHref(user ? "/dashboard/invest" : "/login"));
+  }, []);
 
   return (
     <header className="border-b border-line relative">
@@ -17,7 +23,7 @@ export default function Nav() {
         </Link>
 
         <div className="hidden md:flex gap-9 text-[14.5px] text-paper-dim">
-          <a href="#invest" className="hover:text-paper transition-colors">Invest</a>
+          <Link href={investHref} className="hover:text-paper transition-colors">Invest</Link>
           <Link href="/markets" className="hover:text-paper transition-colors">Markets</Link>
           <Link href="/how-it-works" className="hover:text-paper transition-colors">How it works</Link>
           <Link href="/security" className="hover:text-paper transition-colors">Security</Link>
@@ -60,7 +66,7 @@ export default function Nav() {
       {/* Mobile menu panel */}
       {open && (
         <div className="md:hidden border-t border-line bg-ink px-5 py-6 flex flex-col gap-1">
-          <a href="#invest" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Invest</a>
+          <Link href={investHref} className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Invest</Link>
           <Link href="/markets" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Markets</Link>
           <Link href="/how-it-works" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>How it works</Link>
           <Link href="/security" className="py-3 text-[15px] text-paper-dim border-b border-line" onClick={() => setOpen(false)}>Security</Link>

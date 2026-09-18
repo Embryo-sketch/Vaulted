@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type NotificationKey = "newSignups" | "newSupportMessages" | "pendingVerifications";
 
@@ -21,6 +22,12 @@ export default function AdminSettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+  const [brokerName, setBrokerName] = useState("");
+  const [brokerEmail, setBrokerEmail] = useState("");
+  const [brokerPhone, setBrokerPhone] = useState("");
+  const [supportHours, setSupportHours] = useState("");
+  const [brokerSaved, setBrokerSaved] = useState(false);
+  const [brokerError, setBrokerError] = useState<string | null>(null);
 
   // Notifications
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
@@ -28,6 +35,8 @@ export default function AdminSettingsPage() {
     newSupportMessages: true,
     pendingVerifications: true,
   });
+
+  useEffect(() => { async function loadBroker() { const { data, error } = await createClient().from("broker_contact_settings").select("broker_name, broker_email, broker_phone, support_hours").eq("id", true).single(); if (error) { setBrokerError(error.message); return; } setBrokerName(data.broker_name); setBrokerEmail(data.broker_email); setBrokerPhone(data.broker_phone); setSupportHours(data.support_hours); } void loadBroker(); }, []);
 
   function handleSaveProfile() {
     setProfileSaved(true);
@@ -44,6 +53,13 @@ export default function AdminSettingsPage() {
 
   function toggleNotification(key: NotificationKey) {
     setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  async function saveBroker() {
+    setBrokerError(null);
+    const { error } = await createClient().from("broker_contact_settings").update({ broker_name: brokerName.trim(), broker_email: brokerEmail.trim(), broker_phone: brokerPhone.trim(), support_hours: supportHours.trim(), updated_at: new Date().toISOString() }).eq("id", true);
+    if (error) { setBrokerError(error.message); return; }
+    setBrokerSaved(true); setTimeout(() => setBrokerSaved(false), 2500);
   }
 
   return (
@@ -156,6 +172,19 @@ export default function AdminSettingsPage() {
                 <span className="text-[13px] text-moss">Password updated</span>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="border-t border-line pt-8">
+          <h2 className="font-mono text-[12.5px] text-gold mb-2">BROKER CONTACT</h2>
+          <p className="text-[13px] text-paper-dim mb-5">This information appears on the customer withdrawal page.</p>
+          <div className="flex flex-col gap-4">
+            <div><label className="block text-[13px] text-paper-dim mb-2">Broker name</label><input value={brokerName} onChange={(e) => setBrokerName(e.target.value)} className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px]" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Broker email</label><input type="email" value={brokerEmail} onChange={(e) => setBrokerEmail(e.target.value)} className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px]" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Broker phone</label><input value={brokerPhone} onChange={(e) => setBrokerPhone(e.target.value)} className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px]" /></div>
+            <div><label className="block text-[13px] text-paper-dim mb-2">Support hours</label><input value={supportHours} onChange={(e) => setSupportHours(e.target.value)} placeholder="For example: Mon–Fri, 9am–6pm" className="w-full bg-slate border border-line text-paper px-4 py-3 text-[14.5px]" /></div>
+            {brokerError && <p className="text-rust text-[13px]">{brokerError}</p>}
+            <div className="flex items-center gap-3"><button onClick={() => void saveBroker()} className="bg-gold text-ink font-medium text-[14px] px-5 py-2.5">Save broker details</button>{brokerSaved && <span className="text-[13px] text-moss">Broker details saved</span>}</div>
           </div>
         </section>
 
