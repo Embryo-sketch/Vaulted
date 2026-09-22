@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/client";
 type Transaction = { id: string; type: "Deposit" | "Growth" | "Withdraw"; amount: number; note: string | null; crypto_currency: string | null; crypto_amount: number | null; created_at: string };
 
 function labelFor(transaction: Transaction) {
+  if (transaction.note?.startsWith("Cash investment")) return "Cash investment";
+  if (transaction.note?.startsWith("Crypto investment")) return "Crypto investment";
   if (transaction.crypto_currency) return "Crypto deposit";
   if (transaction.type === "Deposit") return "Manual cash deposit";
   if (transaction.type === "Growth") return "Growth adjustment";

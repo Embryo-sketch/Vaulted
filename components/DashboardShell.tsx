@@ -19,9 +19,17 @@ function getInitials(name: string, email: string): string {
   return email.slice(0, 2).toUpperCase();
 }
 
+function getGreeting(name: string): string {
+  const hour = new Date().getHours();
+  const timeOfDay = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const firstName = name.trim().split(/\s+/)[0];
+  return firstName ? `${timeOfDay}, ${firstName}` : timeOfDay;
+}
+
 const navItems = [
   { label: "Overview", href: "/dashboard" },
   { label: "Invest", href: "/dashboard/invest" },
+  { label: "Investments", href: "/dashboard/investments" },
   { label: "Deposit", href: "/dashboard/deposit" },
   { label: "Transactions", href: "/dashboard/transactions" },
   { label: "Notifications", href: "/dashboard/notifications" },
@@ -123,6 +131,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [identity, setIdentity] = useState({ fullName: "", email: "" });
+  const greeting = getGreeting(identity.fullName);
 
   useEffect(() => {
     async function loadIdentity() {
@@ -174,7 +183,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="border-b border-line px-4 md:px-10 py-4 md:py-5 flex items-center justify-between gap-3 sticky top-0 bg-ink z-40">
+        <header className="border-b border-line px-4 md:px-10 py-3 md:py-4 flex items-center justify-between gap-3 sticky top-0 bg-ink z-40">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="md:hidden flex flex-col gap-[4px] p-1.5 shrink-0"
@@ -185,15 +194,9 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <span className="block w-4 h-[1.5px] bg-paper" />
               <span className="block w-4 h-[1.5px] bg-paper" />
             </button>
-            <div className="font-mono text-[11px] md:text-[12.5px] text-paper-dim overflow-hidden whitespace-nowrap w-full md:w-auto">
-              <span className="inline-flex md:hidden gap-12 animate-topbar-marquee">
-                <span>YOUR HOLDINGS ARE MANAGED AUTOMATICALLY</span>
-                <span>YOUR HOLDINGS ARE MANAGED AUTOMATICALLY</span>
-              </span>
-              <span className="hidden md:inline">
-                YOUR HOLDINGS ARE MANAGED AUTOMATICALLY
-              </span>
-            </div>
+            <p className="font-serif text-[22px] md:text-[26px] text-paper truncate">
+              {greeting}
+            </p>
           </div>
           <div className="flex items-center gap-5 shrink-0">
             <NotificationBell />

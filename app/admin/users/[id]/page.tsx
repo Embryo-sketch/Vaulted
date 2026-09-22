@@ -41,6 +41,7 @@ type KycSubmission = {
   id_document_path: string;
   status: "Submitted" | "Approved" | "Rejected";
 };
+type Investment = { id: string; tier: string; source: string; amount: number; crypto_currency: string | null; crypto_amount: number | null; created_at: string };
 
 const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
 
@@ -57,6 +58,7 @@ export default function AdminUserDetailPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [depositRequests, setDepositRequests] = useState<DepositRequest[]>([]);
   const [kycSubmission, setKycSubmission] = useState<KycSubmission | null>(null);
+  const [investments, setInvestments] = useState<Investment[]>([]);
 
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("Deposit");
@@ -71,7 +73,7 @@ export default function AdminUserDetailPage() {
 
   async function load() {
     const supabase = createClient();
-    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }] = await Promise.all([
+    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }, { data: investmentData }] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, status, portfolio_value, available_cash")
@@ -92,6 +94,7 @@ export default function AdminUserDetailPage() {
         .select("id, crypto_currency, claimed_amount, tx_hash, status, created_at")
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
+      supabase.from("investments").select("id, tier, source, amount, crypto_currency, crypto_amount, created_at").eq("user_id", id).order("created_at", { ascending: false }),
     ]);
 
     setProfile(user);
@@ -99,6 +102,7 @@ export default function AdminUserDetailPage() {
     setTransactions(history ?? []);
     setDepositRequests(requests ?? []);
     setKycSubmission(kyc);
+    setInvestments(investmentData ?? []);
   }
 
   useEffect(() => {
@@ -221,6 +225,11 @@ export default function AdminUserDetailPage() {
               <p><span className="text-paper-dim">Address: </span>{kycSubmission.house_address}</p>
               <button onClick={openIdDocument} className="border border-gold text-gold px-3 py-2 text-[13px] self-start">Open submitted ID</button>
             </div>}
+          </section>
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-4">INVESTMENTS</h2>
+            {investments.length === 0 ? <p className="text-paper-dim">No investments yet.</p> : <div className="space-y-3">{investments.map((investment) => <div key={investment.id} className="flex flex-wrap justify-between gap-3 border-b border-line pb-3 last:border-0"><div><span className="capitalize">{investment.tier}</span><span className="text-paper-dim"> · {investment.source}</span>{investment.crypto_currency && <span className="text-paper-dim"> · {investment.crypto_amount} {investment.crypto_currency}</span>}<p className="text-[12px] text-paper-dim mt-1">{new Date(investment.created_at).toLocaleString()}</p></div><span className="font-mono text-gold">{formatCurrency(investment.amount)}</span></div>)}</div>}
           </section>
 
           <section className="bg-slate border border-line p-6 mb-10">

@@ -15,41 +15,41 @@ export const INVESTMENT_TIERS: InvestmentTier[] = [
     id: "starter",
     name: "Starter",
     min: 200,
-    max: 999,
+    max: 200,
     apr: 4.5,
     description: "A low-commitment way to start growing a deposit.",
   },
   {
     id: "growth",
     name: "Growth",
-    min: 1000,
-    max: 4999,
+    min: 500,
+    max: 500,
     apr: 6.2,
     description: "For deposits you're comfortable leaving to grow longer-term.",
   },
   {
     id: "advanced",
     name: "Advanced",
-    min: 5000,
-    max: 9999,
+    min: 1000,
+    max: 1000,
     apr: 8.1,
     description: "A stronger rate for larger, more established positions.",
   },
   {
     id: "premium",
     name: "Premium",
-    min: 10000,
-    max: 19999,
+    min: 5000,
+    max: 5000,
     apr: 10.4,
     description: "Our premium rate for high-value deposits.",
   },
   {
     id: "elite",
     name: "Elite",
-    min: 20000,
-    max: null,
+    min: 10000,
+    max: 10000,
     apr: 12.8,
-    description: "Our best available rate, for $20,000 and above.",
+    description: "Our highest tier for established positions.",
   },
 ];
 
@@ -60,6 +60,9 @@ export function getTierForAmount(amount: number): InvestmentTier | undefined {
 }
 
 export function formatTierRange(tier: InvestmentTier): string {
+  if (tier.max === tier.min) {
+    return `$${tier.min.toLocaleString()}`;
+  }
   if (tier.max === null) {
     return `$${tier.min.toLocaleString()}+`;
   }
