@@ -20,6 +20,7 @@ const categoryStyles: Record<string, string> = {
   signup: "text-paper border-line",
   kyc: "text-gold border-gold",
   deposit: "text-gold border-gold",
+  "deposit-approval": "text-gold border-gold",
   support: "text-moss border-moss",
   verification: "text-paper border-line",
 };

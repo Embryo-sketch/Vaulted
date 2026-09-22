@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
 import CryptoIcon from "@/components/CryptoIcon";
 import { INVESTMENT_TIERS } from "@/lib/investment-tiers";
@@ -18,12 +18,14 @@ const coinIds: Record<string, string> = {
 
 function CryptoInvestContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const tier = INVESTMENT_TIERS.find((item) => item.id === params.get("tier")) ?? INVESTMENT_TIERS[0];
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [selected, setSelected] = useState<Holding | null>(null);
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState(0);
   const [message, setMessage] = useState("");
+  const [received, setReceived] = useState(false);
 
   useEffect(() => {
     async function loadHoldings() {
@@ -68,10 +70,11 @@ function CryptoInvestContent() {
       investment_tier: tier.id, investment_crypto: selected.crypto_currency,
       investment_crypto_amount: Number(amount), investment_usd_amount: usdValue,
     });
-    setMessage(error ? error.message : "Investment created successfully.");
+    setMessage(error ? error.message : "");
     if (!error) {
       setHoldings((items) => items.map((item) => item.crypto_currency === selected.crypto_currency ? { ...item, crypto_amount: item.crypto_amount - Number(amount) } : item));
       setSelected(null); setAmount("");
+      setReceived(true);
     }
   }
 
@@ -99,6 +102,7 @@ function CryptoInvestContent() {
       {message && <p className="text-gold text-[13px] mt-3">{message}</p>}
       <button onClick={() => void submit()} className="mt-5 bg-gold text-ink px-5 py-3">Invest</button>
     </div></div>, document.body)}
+    {received && createPortal(<div className="fixed inset-0 z-[80] bg-ink/80 flex items-center justify-center p-4"><div className="w-full max-w-[420px] bg-slate border border-gold p-6 text-center"><h2 className="font-serif text-[24px]">Congratulations</h2><p className="text-paper-dim mt-3">Your investment has been received.</p><button onClick={() => router.push("/dashboard/investments")} className="mt-6 bg-gold text-ink px-5 py-3">View investments</button></div></div>, document.body)}
   </div></DashboardShell>;
 }
 
