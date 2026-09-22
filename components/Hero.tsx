@@ -48,7 +48,7 @@ export default function Hero() {
           <div className="flex gap-6 md:gap-10 mt-10 md:mt-14 pt-6 md:pt-7 border-t border-line flex-wrap">
             <div>
               <div className="font-mono text-[22px] text-paper">
-                <CountUp end={4.1} decimals={1} prefix="$" suffix="B" />
+                <CountUp end={3.5} decimals={1} prefix="$" suffix="M" />
               </div>
               <div className="text-[12.5px] text-paper-dim mt-1">
                 Assets under custody
@@ -56,7 +56,7 @@ export default function Hero() {
             </div>
             <div>
               <div className="font-mono text-[22px] text-paper">
-                <CountUp end={210} decimals={0} suffix="K" />
+                <CountUp end={73.3} decimals={1} suffix="K" />
               </div>
               <div className="text-[12.5px] text-paper-dim mt-1">
                 Accounts funded

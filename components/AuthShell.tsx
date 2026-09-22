@@ -39,7 +39,7 @@ export default function AuthShell({
           <div className="text-[14px] text-paper-dim mb-2">
             Total value custodied
           </div>
-          <div className="font-mono text-[34px] mb-6">$4.1B</div>
+          <div className="font-mono text-[34px] mb-6">$3.5M</div>
           <svg
             width="100%"
             height="90"
@@ -61,7 +61,7 @@ export default function AuthShell({
             </div>
             <div className="flex justify-between text-[13.5px]">
               <span className="text-paper-dim">Accounts funded</span>
-              <span className="font-mono">210K</span>
+              <span className="font-mono">73.3K</span>
             </div>
             <div className="flex justify-between text-[13.5px]">
               <span className="text-paper-dim">Assets supported</span>

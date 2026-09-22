@@ -17,11 +17,11 @@ export default function AboutPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-line">
           <div className="bg-slate px-6 py-6">
-            <div className="font-mono text-[26px] text-gold">$4.1B</div>
+            <div className="font-mono text-[26px] text-gold">$3.5M</div>
             <div className="text-[12.5px] text-paper-dim mt-1">Assets under custody</div>
           </div>
           <div className="bg-slate px-6 py-6">
-            <div className="font-mono text-[26px] text-gold">210K</div>
+            <div className="font-mono text-[26px] text-gold">73.3K</div>
             <div className="text-[12.5px] text-paper-dim mt-1">Accounts funded</div>
           </div>
           <div className="bg-slate px-6 py-6">
