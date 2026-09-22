@@ -43,6 +43,7 @@ type KycSubmission = {
 };
 type Investment = { id: string; tier: string; source: string; amount: number; crypto_currency: string | null; crypto_amount: number | null; created_at: string; updated_at: string };
 type ManualDepositApproval = { id: string; amount: number; note: string | null; status: "Pending" | "Approved" | "Cancelled"; created_at: string };
+type VaultedFinancialBankDetails = { account_number: string; routing_number: string; updated_at: string };
 
 const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
 
@@ -61,6 +62,7 @@ export default function AdminUserDetailPage() {
   const [kycSubmission, setKycSubmission] = useState<KycSubmission | null>(null);
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [manualDepositApprovals, setManualDepositApprovals] = useState<ManualDepositApproval[]>([]);
+  const [bankDetails, setBankDetails] = useState<VaultedFinancialBankDetails | null>(null);
 
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("Deposit");
@@ -76,10 +78,13 @@ export default function AdminUserDetailPage() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [investmentPercentages, setInvestmentPercentages] = useState<Record<string, string>>({});
   const [adjustingInvestmentId, setAdjustingInvestmentId] = useState<string | null>(null);
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [routingNumber, setRoutingNumber] = useState("");
+  const [savingBankDetails, setSavingBankDetails] = useState(false);
 
   async function load() {
     const supabase = createClient();
-    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }, { data: investmentData }, { data: approvalData }] = await Promise.all([
+    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }, { data: investmentData }, { data: approvalData }, { data: bankData, error: bankError }] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, status, portfolio_value, available_cash")
@@ -102,6 +107,7 @@ export default function AdminUserDetailPage() {
         .order("created_at", { ascending: false }),
       supabase.from("investments").select("id, tier, source, amount, crypto_currency, crypto_amount, created_at, updated_at").eq("user_id", id).order("updated_at", { ascending: false }),
       supabase.from("manual_deposit_requests").select("id, amount, note, status, created_at").eq("user_id", id).order("created_at", { ascending: false }),
+      supabase.rpc("get_admin_user_bank_details", { target_user_id: id }).maybeSingle(),
     ]);
 
     setProfile(user);
@@ -111,6 +117,11 @@ export default function AdminUserDetailPage() {
     setKycSubmission(kyc);
     setInvestments(investmentData ?? []);
     setManualDepositApprovals(approvalData ?? []);
+    const storedBankDetails = bankData as VaultedFinancialBankDetails | null;
+    if (bankError) setMessage(bankError.message);
+    setBankDetails(storedBankDetails);
+    setBankAccountNumber(storedBankDetails?.account_number ?? "");
+    setRoutingNumber(storedBankDetails?.routing_number ?? "");
   }
 
   useEffect(() => {
@@ -174,6 +185,21 @@ export default function AdminUserDetailPage() {
     else {
       setMessage("Investment value updated.");
       setInvestmentPercentages((percentages) => ({ ...percentages, [investmentId]: "" }));
+      await load();
+    }
+  }
+
+  async function saveBankDetails() {
+    setSavingBankDetails(true);
+    const { error } = await createClient().rpc("save_admin_user_bank_details", {
+      target_user_id: id,
+      new_account_number: bankAccountNumber,
+      new_routing_number: routingNumber,
+    });
+    setSavingBankDetails(false);
+    if (error) setMessage(error.message);
+    else {
+      setMessage("Vaulted Financial bank details saved.");
       await load();
     }
   }
@@ -277,6 +303,25 @@ export default function AdminUserDetailPage() {
           <section className="bg-slate border border-line p-6 mb-10">
             <h2 className="font-mono text-gold text-[13px] mb-4">INVESTMENTS</h2>
             {investments.length === 0 ? <p className="text-paper-dim">No investments yet.</p> : <div className="space-y-4">{investments.map((investment) => <div key={investment.id} className="border-b border-line pb-4 last:border-0"><div className="flex flex-wrap justify-between gap-3"><div><span className="capitalize">{investment.tier}</span><span className="text-paper-dim"> · {investment.source}</span>{investment.crypto_currency && <span className="text-paper-dim"> · {investment.crypto_amount} {investment.crypto_currency}</span>}<p className="text-[12px] text-paper-dim mt-1">Updated {new Date(investment.updated_at ?? investment.created_at).toLocaleString()}</p></div><span className="font-mono text-gold">{formatCurrency(investment.amount)}</span></div><div className="mt-3 flex flex-wrap items-center gap-3"><input type="number" step="0.01" value={investmentPercentages[investment.id] ?? ""} onChange={(event) => setInvestmentPercentages((percentages) => ({ ...percentages, [investment.id]: event.target.value }))} placeholder="Percentage e.g. 5 or -5" className="bg-slate-2 border border-line p-3 w-56" /><button onClick={() => void adjustInvestment(investment.id)} disabled={adjustingInvestmentId === investment.id} className="border border-gold text-gold px-4 py-2.5 disabled:opacity-40">{adjustingInvestmentId === investment.id ? "Updating…" : "Apply adjustment"}</button></div></div>)}</div>}
+          </section>
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-2">VAULTED FINANCIAL BANK DETAILS</h2>
+            <p className="text-paper-dim text-[13px] mb-4">Assign the Vaulted Financial account and routing numbers for this user. These details are visible only to administrators.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[13px] text-paper-dim mb-2">Account number</label>
+                <input value={bankAccountNumber} onChange={(event) => setBankAccountNumber(event.target.value.replace(/[^0-9\\s]/g, ""))} inputMode="numeric" autoComplete="off" placeholder="Account number" className="w-full bg-slate-2 border border-line p-3 font-mono" />
+              </div>
+              <div>
+                <label className="block text-[13px] text-paper-dim mb-2">Routing number</label>
+                <input value={routingNumber} onChange={(event) => setRoutingNumber(event.target.value.replace(/[^0-9\\s]/g, ""))} inputMode="numeric" autoComplete="off" placeholder="9-digit routing number" className="w-full bg-slate-2 border border-line p-3 font-mono" />
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button onClick={() => void saveBankDetails()} disabled={savingBankDetails} className="bg-gold text-ink px-5 py-2.5 disabled:opacity-40">{savingBankDetails ? "Saving…" : "Save bank details"}</button>
+              {bankDetails && <span className="text-paper-dim text-[12px]">Last updated {new Date(bankDetails.updated_at).toLocaleString()}</span>}
+            </div>
           </section>
 
           <section className="bg-slate border border-line p-6 mb-10">

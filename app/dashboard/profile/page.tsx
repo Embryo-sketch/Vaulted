@@ -12,6 +12,12 @@ type Profile = {
   created_at: string;
 };
 
+type VaultedFinancialBankDetails = {
+  account_number: string;
+  routing_number: string;
+  updated_at: string;
+};
+
 function getInitials(name: string, email: string): string {
   const trimmed = name.trim();
   if (trimmed) {
@@ -29,6 +35,7 @@ function statusColor(status: string) {
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [bankDetails, setBankDetails] = useState<VaultedFinancialBankDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,17 +46,25 @@ export default function ProfilePage() {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error: profileError } = await supabase
-        .from("profiles")
-        .select("full_name, email, status, created_at")
-        .eq("id", user.id)
-        .single();
+      const [{ data, error: profileError }, { data: bankData, error: bankError }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name, email, status, created_at")
+          .eq("id", user.id)
+          .single(),
+        supabase.rpc("get_my_vaulted_financial_bank_details").maybeSingle(),
+      ]);
 
       if (profileError) {
         setError(profileError.message);
         return;
       }
       setProfile(data);
+      if (bankError) {
+        setError(bankError.message);
+        return;
+      }
+      setBankDetails(bankData as VaultedFinancialBankDetails | null);
     }
     void load();
   }, []);
@@ -101,6 +116,24 @@ export default function ProfilePage() {
                 </span>
               </div>
             </div>
+          </section>
+
+          <section>
+            <h2 className="font-mono text-[12.5px] text-gold mb-5">VAULTED FINANCIAL BANK DETAILS</h2>
+            {bankDetails ? (
+              <div className="flex flex-col">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 py-3.5 border-b border-line text-[14.5px]">
+                  <span className="text-paper-dim">Account number</span>
+                  <span className="font-mono break-all">{bankDetails.account_number}</span>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-1 py-3.5 border-b border-line text-[14.5px]">
+                  <span className="text-paper-dim">Routing number</span>
+                  <span className="font-mono break-all">{bankDetails.routing_number}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-paper-dim text-[14px]">Your Vaulted Financial bank details have not been assigned yet.</p>
+            )}
           </section>
 
           <Link
