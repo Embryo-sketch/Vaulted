@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/DashboardShell";
@@ -16,7 +16,7 @@ const coinIds: Record<string, string> = {
   DOGE: "dogecoin", ADA: "cardano", DOT: "polkadot", LINK: "chainlink",
 };
 
-export default function CryptoInvestPage() {
+function CryptoInvestContent() {
   const params = useSearchParams();
   const tier = INVESTMENT_TIERS.find((item) => item.id === params.get("tier")) ?? INVESTMENT_TIERS[0];
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -100,4 +100,10 @@ export default function CryptoInvestPage() {
       <button onClick={() => void submit()} className="mt-5 bg-gold text-ink px-5 py-3">Invest</button>
     </div></div>, document.body)}
   </div></DashboardShell>;
+}
+
+export default function CryptoInvestPage() {
+  return <Suspense fallback={<DashboardShell><p className="text-paper-dim">Loading crypto holdings…</p></DashboardShell>}>
+    <CryptoInvestContent />
+  </Suspense>;
 }
