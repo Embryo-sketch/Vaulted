@@ -23,6 +23,21 @@
   animation: ticker-scroll 32s linear infinite;
 }
 
+@keyframes mobile-greeting-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-mobile-greeting {
+  animation: mobile-greeting-scroll 12s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-mobile-greeting {
+    animation: none;
+  }
+}
+
 /* Add this to the BOTTOM of app/globals.css, after the @theme block.
    It adds a barely-visible grain texture over the whole site so the flat
    ink background feels less stark/bright, without changing any colors. */

@@ -184,7 +184,7 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="border-b border-line px-4 md:px-10 py-3 md:py-4 flex items-center justify-between gap-3 sticky top-0 bg-ink z-40">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex flex-1 items-center gap-3 min-w-0">
             <button
               className="md:hidden flex flex-col gap-[4px] p-1.5 shrink-0"
               onClick={() => setDrawerOpen(true)}
@@ -194,7 +194,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
               <span className="block w-4 h-[1.5px] bg-paper" />
               <span className="block w-4 h-[1.5px] bg-paper" />
             </button>
-            <p className="font-serif text-[22px] md:text-[26px] text-paper truncate">
+            <div className="md:hidden min-w-0 overflow-hidden" aria-label={greeting}>
+              <div className="animate-mobile-greeting inline-flex w-max whitespace-nowrap font-serif text-[22px] text-paper">
+                <span className="pr-10">{greeting}</span>
+                <span className="pr-10" aria-hidden="true">{greeting}</span>
+              </div>
+            </div>
+            <p className="hidden md:block font-serif text-[26px] text-paper truncate">
               {greeting}
             </p>
           </div>
