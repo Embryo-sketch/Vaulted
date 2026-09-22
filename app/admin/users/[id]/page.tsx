@@ -42,7 +42,7 @@ type KycSubmission = {
   status: "Submitted" | "Approved" | "Rejected";
 };
 type Investment = { id: string; tier: string; source: string; amount: number; crypto_currency: string | null; crypto_amount: number | null; created_at: string; updated_at: string };
-type ManualDepositApproval = { id: string; amount: number; note: string | null; status: "Pending" | "Approved" | "Cancelled"; created_at: string };
+type ManualDepositApproval = { id: string; amount: number; note: string | null; status: "Pending" | "Approved" | "Rejected" | "Cancelled"; rejection_reason: string | null; created_at: string };
 type VaultedFinancialBankDetails = { account_number: string; routing_number: string; updated_at: string };
 
 const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
@@ -76,6 +76,9 @@ export default function AdminUserDetailPage() {
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [approvalCodes, setApprovalCodes] = useState<Record<string, string>>({});
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
+  const [manualDepositStatuses, setManualDepositStatuses] = useState<Record<string, "Pending" | "Rejected" | "Approved">>({});
+  const [savingManualDepositStatusId, setSavingManualDepositStatusId] = useState<string | null>(null);
   const [investmentPercentages, setInvestmentPercentages] = useState<Record<string, string>>({});
   const [adjustingInvestmentId, setAdjustingInvestmentId] = useState<string | null>(null);
   const [bankAccountNumber, setBankAccountNumber] = useState("");
@@ -106,7 +109,7 @@ export default function AdminUserDetailPage() {
         .eq("user_id", id)
         .order("created_at", { ascending: false }),
       supabase.from("investments").select("id, tier, source, amount, crypto_currency, crypto_amount, created_at, updated_at").eq("user_id", id).order("updated_at", { ascending: false }),
-      supabase.from("manual_deposit_requests").select("id, amount, note, status, created_at").eq("user_id", id).order("created_at", { ascending: false }),
+      supabase.from("manual_deposit_requests").select("id, amount, note, status, rejection_reason, created_at").eq("user_id", id).order("created_at", { ascending: false }),
       supabase.rpc("get_admin_user_bank_details", { target_user_id: id }).maybeSingle(),
     ]);
 
@@ -164,6 +167,33 @@ export default function AdminUserDetailPage() {
     else {
       setMessage("Manual deposit approved and credited.");
       setApprovalCodes((codes) => ({ ...codes, [requestId]: "" }));
+      await load();
+    }
+  }
+
+  async function saveManualDepositStatus(request: ManualDepositApproval) {
+    const requestedStatus = manualDepositStatuses[request.id] ?? request.status;
+    if (requestedStatus === "Approved") {
+      await approveManualDeposit(request.id);
+      return;
+    }
+    if (requestedStatus !== "Pending" && requestedStatus !== "Rejected") return;
+    const reason = rejectionReasons[request.id] ?? request.rejection_reason ?? "";
+    if (requestedStatus === "Rejected" && !reason.trim()) {
+      setMessage("Enter a reason before rejecting this deposit request.");
+      return;
+    }
+    setSavingManualDepositStatusId(request.id);
+    const { error } = await createClient().rpc("update_manual_deposit_request_status", {
+      request_id: request.id,
+      requested_status: requestedStatus,
+      requested_rejection_reason: requestedStatus === "Rejected" ? reason : null,
+    });
+    setSavingManualDepositStatusId(null);
+    if (error) setMessage(error.message);
+    else {
+      setMessage(requestedStatus === "Pending" ? "Deposit request is pending again and the user received a new code." : "Manual deposit rejected and the user was notified.");
+      setManualDepositStatuses((statuses) => ({ ...statuses, [request.id]: requestedStatus }));
       await load();
     }
   }
@@ -423,7 +453,40 @@ export default function AdminUserDetailPage() {
           <section className="bg-slate border border-line p-6 mb-10">
             <h2 className="font-mono text-gold text-[13px] mb-2">MANUAL DEPOSIT APPROVALS</h2>
             <p className="text-paper-dim text-[13px] mb-4">Deposit requests created here stay pending until you enter the user&apos;s one-time code.</p>
-            {manualDepositApprovals.length === 0 ? <p className="text-paper-dim">No manual deposit requests yet.</p> : <div className="space-y-4">{manualDepositApprovals.map((request) => <div key={request.id} className="border border-line p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-mono text-gold">{formatCurrency(request.amount)}</p>{request.note && <p className="text-paper-dim text-[13px] mt-1">{request.note}</p>}<p className="text-paper-dim text-[12px] mt-1">Created {new Date(request.created_at).toLocaleString()}</p></div><span className={`font-mono text-[12px] px-2 py-1 border ${statusColor(request.status === "Approved" ? "Confirmed" : request.status)}`}>{request.status.toUpperCase()}</span></div>{request.status === "Pending" && <div className="mt-4 flex flex-wrap gap-3"><input value={approvalCodes[request.id] ?? ""} onChange={(event) => setApprovalCodes((codes) => ({ ...codes, [request.id]: event.target.value }))} inputMode="numeric" maxLength={6} placeholder="One-time code" className="bg-slate-2 border border-line p-3 w-48" /><button onClick={() => void approveManualDeposit(request.id)} disabled={approvingId === request.id} className="bg-gold text-ink px-4 py-2.5 disabled:opacity-40">{approvingId === request.id ? "Approving…" : "Approve deposit"}</button></div>}</div>)}</div>}
+            {manualDepositApprovals.length === 0 ? (
+              <p className="text-paper-dim">No manual deposit requests yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {manualDepositApprovals.map((request) => (
+                  <div key={request.id} className="border border-line p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-mono text-gold">{formatCurrency(request.amount)}</p>
+                        {request.note && <p className="text-paper-dim text-[13px] mt-1">{request.note}</p>}
+                        <p className="text-paper-dim text-[12px] mt-1">Created {new Date(request.created_at).toLocaleString()}</p>
+                      </div>
+                      <span className={`font-mono text-[12px] px-2 py-1 border ${statusColor(request.status === "Approved" ? "Confirmed" : request.status)}`}>{request.status.toUpperCase()}</span>
+                    </div>
+                    {request.status !== "Approved" && request.status !== "Cancelled" && (
+                      <div className="mt-4 pt-4 border-t border-line grid grid-cols-1 md:grid-cols-[180px_1fr_auto] gap-3">
+                        <select value={manualDepositStatuses[request.id] ?? request.status} onChange={(event) => setManualDepositStatuses((statuses) => ({ ...statuses, [request.id]: event.target.value as "Pending" | "Rejected" | "Approved" }))} className="bg-slate-2 border border-line p-3">
+                          <option value="Pending">Pending</option>
+                          <option value="Rejected">Rejected</option>
+                          <option value="Approved">Approved</option>
+                        </select>
+                        {(manualDepositStatuses[request.id] ?? request.status) === "Approved" ? (
+                          <input value={approvalCodes[request.id] ?? ""} onChange={(event) => setApprovalCodes((codes) => ({ ...codes, [request.id]: event.target.value }))} inputMode="numeric" maxLength={6} placeholder="One-time approval code" className="bg-slate-2 border border-line p-3" />
+                        ) : (
+                          <input value={rejectionReasons[request.id] ?? request.rejection_reason ?? ""} onChange={(event) => setRejectionReasons((reasons) => ({ ...reasons, [request.id]: event.target.value }))} placeholder="Reason required when rejected" className="bg-slate-2 border border-line p-3" />
+                        )}
+                        <button onClick={() => void saveManualDepositStatus(request)} disabled={savingManualDepositStatusId === request.id || approvingId === request.id} className="border border-gold text-gold px-4 py-2.5 disabled:opacity-40">{approvingId === request.id ? "Approving…" : savingManualDepositStatusId === request.id ? "Saving…" : (manualDepositStatuses[request.id] ?? request.status) === "Approved" ? "Approve with code" : "Save status"}</button>
+                      </div>
+                    )}
+                    {request.status === "Rejected" && request.rejection_reason && <p className="mt-3 text-[13px] text-rust">Reason: {request.rejection_reason}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="bg-slate border border-line p-6 mb-10">
