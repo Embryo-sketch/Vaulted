@@ -44,6 +44,8 @@ type KycSubmission = {
 type Investment = { id: string; tier: string; source: string; amount: number; crypto_currency: string | null; crypto_amount: number | null; created_at: string; updated_at: string };
 type ManualDepositApproval = { id: string; amount: number; note: string | null; status: "Pending" | "Approved" | "Rejected" | "Cancelled"; rejection_reason: string | null; created_at: string };
 type VaultedFinancialBankDetails = { account_number: string; routing_number: string; updated_at: string };
+type WithdrawalPrivateKey = { private_key: string; generated_at: string };
+type WithdrawalRequest = { id: string; amount: number; account_holder_name: string; bank_name: string; account_number: string | null; routing_number: string | null; iban: string | null; swift_bic: string | null; country: string | null; note: string | null; status: "Pending" | "Approved" | "Rejected" | "Blocked"; review_reason: string | null; created_at: string; reviewed_at: string | null };
 
 const STATUS_OPTIONS: Profile["status"][] = ["Pending", "Verified", "Suspended"];
 
@@ -63,6 +65,8 @@ export default function AdminUserDetailPage() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [manualDepositApprovals, setManualDepositApprovals] = useState<ManualDepositApproval[]>([]);
   const [bankDetails, setBankDetails] = useState<VaultedFinancialBankDetails | null>(null);
+  const [withdrawalPrivateKey, setWithdrawalPrivateKey] = useState<WithdrawalPrivateKey | null>(null);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
 
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("Deposit");
@@ -84,10 +88,14 @@ export default function AdminUserDetailPage() {
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [routingNumber, setRoutingNumber] = useState("");
   const [savingBankDetails, setSavingBankDetails] = useState(false);
+  const [generatingWithdrawalKey, setGeneratingWithdrawalKey] = useState(false);
+  const [withdrawalReviewReasons, setWithdrawalReviewReasons] = useState<Record<string, string>>({});
+  const [reviewingWithdrawalId, setReviewingWithdrawalId] = useState<string | null>(null);
+  const [unblockingAccount, setUnblockingAccount] = useState(false);
 
   async function load() {
     const supabase = createClient();
-    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }, { data: investmentData }, { data: approvalData }, { data: bankData, error: bankError }] = await Promise.all([
+    const [{ data: user }, { data: history }, { data: kyc }, { data: requests }, { data: investmentData }, { data: approvalData }, { data: bankData, error: bankError }, { data: keyData }, { data: withdrawalData }] = await Promise.all([
       supabase
         .from("profiles")
         .select("full_name, email, status, portfolio_value, available_cash")
@@ -111,6 +119,8 @@ export default function AdminUserDetailPage() {
       supabase.from("investments").select("id, tier, source, amount, crypto_currency, crypto_amount, created_at, updated_at").eq("user_id", id).order("updated_at", { ascending: false }),
       supabase.from("manual_deposit_requests").select("id, amount, note, status, rejection_reason, created_at").eq("user_id", id).order("created_at", { ascending: false }),
       supabase.rpc("get_admin_user_bank_details", { target_user_id: id }).maybeSingle(),
+      supabase.rpc("get_admin_withdrawal_private_key", { target_user_id: id }).maybeSingle(),
+      supabase.from("withdrawal_requests").select("id, amount, account_holder_name, bank_name, account_number, routing_number, iban, swift_bic, country, note, status, review_reason, created_at, reviewed_at").eq("user_id", id).order("created_at", { ascending: false }),
     ]);
 
     setProfile(user);
@@ -125,6 +135,8 @@ export default function AdminUserDetailPage() {
     setBankDetails(storedBankDetails);
     setBankAccountNumber(storedBankDetails?.account_number ?? "");
     setRoutingNumber(storedBankDetails?.routing_number ?? "");
+    setWithdrawalPrivateKey(keyData as WithdrawalPrivateKey | null);
+    setWithdrawalRequests((withdrawalData ?? []) as WithdrawalRequest[]);
   }
 
   useEffect(() => {
@@ -231,6 +243,49 @@ export default function AdminUserDetailPage() {
     else {
       setMessage("Vaulted Financial bank details saved.");
       await load();
+    }
+  }
+
+  async function generateWithdrawalPrivateKey() {
+    setGeneratingWithdrawalKey(true);
+    const { data, error } = await createClient().rpc("generate_admin_withdrawal_private_key", { target_user_id: id }).single();
+    setGeneratingWithdrawalKey(false);
+    if (error) setMessage(error.message);
+    else {
+      setWithdrawalPrivateKey(data as WithdrawalPrivateKey);
+      setMessage("A new secure withdrawal private key was generated. Send it to the user through your approved secure channel.");
+    }
+  }
+
+  async function reviewWithdrawal(request: WithdrawalRequest, action: "Approved" | "Rejected" | "Blocked") {
+    const reason = withdrawalReviewReasons[request.id]?.trim() ?? "";
+    if ((action === "Rejected" || action === "Blocked") && !reason) {
+      setMessage("Enter a reason before rejecting or blocking this withdrawal request.");
+      return;
+    }
+    setReviewingWithdrawalId(request.id);
+    const { error } = await createClient().rpc("review_secure_withdrawal_request", {
+      request_id: request.id,
+      review_action: action,
+      review_reason: reason || null,
+    });
+    setReviewingWithdrawalId(null);
+    if (error) setMessage(error.message);
+    else {
+      setMessage(action === "Approved" ? "Withdrawal approved and recorded." : action === "Blocked" ? "Account blocked and user notified." : "Withdrawal rejected and user notified.");
+      await load();
+    }
+  }
+
+  async function unblockAccount() {
+    setUnblockingAccount(true);
+    const { error } = await createClient().from("profiles").update({ status: "Verified" }).eq("id", id);
+    setUnblockingAccount(false);
+    if (error) setMessage(error.message);
+    else {
+      setProfile((current) => current ? { ...current, status: "Verified" } : current);
+      setStatusDraft("Verified");
+      setMessage("Account unblocked and verified.");
     }
   }
 
@@ -355,6 +410,19 @@ export default function AdminUserDetailPage() {
           </section>
 
           <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-2">SECURE WITHDRAWAL ACCESS</h2>
+            <p className="text-paper-dim text-[13px] mb-4">Generate one permanent Vaulted Financial withdrawal private key for this user. This authorizes available-cash withdrawal requests only; it is never a crypto wallet key.</p>
+            {withdrawalPrivateKey ? <div className="border border-line p-4"><p className="text-paper-dim text-[12px] mb-1">User&apos;s withdrawal private key</p><p className="font-mono text-gold break-all tracking-wide">{withdrawalPrivateKey.private_key}</p><p className="text-paper-dim text-[12px] mt-2">Generated {new Date(withdrawalPrivateKey.generated_at).toLocaleString()}</p></div> : <p className="text-paper-dim text-[13.5px]">No withdrawal private key has been generated yet.</p>}
+            <button onClick={() => void generateWithdrawalPrivateKey()} disabled={generatingWithdrawalKey || Boolean(withdrawalPrivateKey)} className="mt-4 bg-gold text-ink px-5 py-2.5 disabled:opacity-40">{generatingWithdrawalKey ? "Generating…" : withdrawalPrivateKey ? "Private key generated" : "Generate private key"}</button>
+          </section>
+
+          <section className="bg-slate border border-line p-6 mb-10">
+            <h2 className="font-mono text-gold text-[13px] mb-2">SECURE WITHDRAWAL REQUESTS</h2>
+            <p className="text-paper-dim text-[13px] mb-4">Review bank withdrawal requests funded from this user&apos;s available cash.</p>
+            {withdrawalRequests.length === 0 ? <p className="text-paper-dim">No withdrawal requests yet.</p> : <div className="space-y-4">{withdrawalRequests.map((request) => <div key={request.id} className="border border-line p-4"><div className="flex flex-wrap justify-between gap-3"><div><p className="font-mono text-gold">{formatCurrency(request.amount)}</p><p className="text-[13px] mt-1">{request.account_holder_name} · {request.bank_name}</p><p className="text-paper-dim text-[12px] mt-1">{request.iban ? `IBAN: ${request.iban}` : `Account: ${request.account_number ?? "—"}`}{request.routing_number ? ` · Routing: ${request.routing_number}` : ""}{request.swift_bic ? ` · SWIFT/BIC: ${request.swift_bic}` : ""}</p>{request.country && <p className="text-paper-dim text-[12px] mt-1">Country: {request.country}</p>}{request.note && <p className="text-paper-dim text-[12px] mt-1">Note: {request.note}</p>}</div><span className={`font-mono text-[12px] px-2 py-1 border self-start ${statusColor(request.status === "Approved" ? "Confirmed" : request.status)}`}>{request.status.toUpperCase()}</span></div>{request.status === "Pending" ? <div className="mt-4 pt-4 border-t border-line"><input value={withdrawalReviewReasons[request.id] ?? ""} onChange={(event) => setWithdrawalReviewReasons((reasons) => ({ ...reasons, [request.id]: event.target.value }))} placeholder="Reason required for rejection or account block" className="w-full bg-slate-2 border border-line p-3 text-[13px]" /><div className="mt-3 flex flex-wrap gap-3"><button onClick={() => void reviewWithdrawal(request, "Approved")} disabled={reviewingWithdrawalId === request.id} className="bg-moss text-ink px-4 py-2.5 disabled:opacity-40">Approve</button><button onClick={() => void reviewWithdrawal(request, "Rejected")} disabled={reviewingWithdrawalId === request.id} className="border border-rust text-rust px-4 py-2.5 disabled:opacity-40">Reject</button><button onClick={() => void reviewWithdrawal(request, "Blocked")} disabled={reviewingWithdrawalId === request.id} className="border border-rust text-rust px-4 py-2.5 disabled:opacity-40">Block account</button></div></div> : request.review_reason && <p className="mt-3 text-[13px] text-paper-dim">Review note: {request.review_reason}</p>}</div>)}</div>}
+          </section>
+
+          <section className="bg-slate border border-line p-6 mb-10">
             <h2 className="font-mono text-gold text-[13px] mb-4">VERIFICATION STATUS</h2>
             <div className="flex flex-wrap items-center gap-3">
               <select
@@ -375,6 +443,7 @@ export default function AdminUserDetailPage() {
               >
                 {savingStatus ? "Saving…" : "Save status"}
               </button>
+              {profile.status === "Suspended" && <button onClick={() => void unblockAccount()} disabled={unblockingAccount} className="border border-moss text-moss px-5 py-2.5 disabled:opacity-40">{unblockingAccount ? "Unblocking…" : "Unblock account"}</button>}
             </div>
           </section>
 

@@ -21,6 +21,7 @@ const categoryStyles: Record<string, string> = {
   kyc: "text-gold border-gold",
   deposit: "text-gold border-gold",
   "deposit-approval": "text-gold border-gold",
+  withdrawal: "text-gold border-gold",
   support: "text-moss border-moss",
   verification: "text-paper border-line",
 };

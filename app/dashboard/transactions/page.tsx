@@ -25,13 +25,21 @@ type ManualDepositRequest = {
   created_at: string;
 };
 
+type WithdrawalRequest = {
+  id: string;
+  amount: number;
+  status: "Pending" | "Approved" | "Rejected" | "Blocked";
+  review_reason: string | null;
+  created_at: string;
+};
+
 type Activity = {
   id: string;
-  kind: "transaction" | "manual-deposit";
+  kind: "transaction" | "manual-deposit" | "withdrawal";
   title: string;
   amount: number;
   note: string | null;
-  status: "Completed" | "Pending" | "Rejected";
+  status: "Completed" | "Pending" | "Rejected" | "Blocked";
   cryptoCurrency: string | null;
   cryptoAmount: number | null;
   createdAt: string;
@@ -40,6 +48,7 @@ type Activity = {
 function statusClass(status: Activity["status"]) {
   if (status === "Completed") return "text-moss border-moss";
   if (status === "Rejected") return "text-rust border-rust";
+  if (status === "Blocked") return "text-rust border-rust";
   return "text-gold border-gold";
 }
 
@@ -55,7 +64,7 @@ export default function TransactionsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const [{ data: transactions, error: transactionError }, { data: manualRequests, error: manualRequestError }] = await Promise.all([
+      const [{ data: transactions, error: transactionError }, { data: manualRequests, error: manualRequestError }, { data: withdrawalRequests, error: withdrawalError }] = await Promise.all([
         supabase
           .from("transactions")
           .select("id, type, amount, note, crypto_currency, crypto_amount, created_at")
@@ -67,11 +76,17 @@ export default function TransactionsPage() {
           .eq("user_id", user.id)
           .in("status", ["Pending", "Rejected"])
           .order("created_at", { ascending: false }),
+        supabase
+          .from("withdrawal_requests")
+          .select("id, amount, status, review_reason, created_at")
+          .eq("user_id", user.id)
+          .in("status", ["Pending", "Rejected", "Blocked"])
+          .order("created_at", { ascending: false }),
       ]);
 
       if (!active) return;
-      if (transactionError || manualRequestError) {
-        setError(transactionError?.message ?? manualRequestError?.message ?? "Unable to load transactions.");
+      if (transactionError || manualRequestError || withdrawalError) {
+        setError(transactionError?.message ?? manualRequestError?.message ?? withdrawalError?.message ?? "Unable to load transactions.");
         setLoading(false);
         return;
       }
@@ -100,8 +115,19 @@ export default function TransactionsPage() {
         cryptoAmount: null,
         createdAt: request.created_at,
       }));
+      const withdrawals = ((withdrawalRequests ?? []) as WithdrawalRequest[]).map((request): Activity => ({
+        id: `withdrawal-${request.id}`,
+        kind: "withdrawal",
+        title: "Secure withdrawal",
+        amount: Number(request.amount),
+        note: request.status === "Pending" ? "Awaiting review by Vaulted Financial" : request.review_reason ?? (request.status === "Blocked" ? "Account blocked for review." : "Withdrawal was not approved."),
+        status: request.status === "Blocked" ? "Blocked" : request.status === "Rejected" ? "Rejected" : "Pending",
+        cryptoCurrency: null,
+        cryptoAmount: null,
+        createdAt: request.created_at,
+      }));
 
-      setItems([...completed, ...awaitingReview].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      setItems([...completed, ...awaitingReview, ...withdrawals].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setLoading(false);
     }
     void load();
