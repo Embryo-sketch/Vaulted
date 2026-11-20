@@ -46,7 +46,7 @@ export default function ChatWidget() {
   if (pathname.startsWith("/admin")) return null;
 
   return <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-3">
-    {open && <div className="bg-slate border border-line w-[92vw] max-w-[340px] h-[440px] flex flex-col shadow-lg">
+    {open && <div className="bg-slate border border-line w-[calc(100vw-2rem)] max-w-[340px] h-[min(440px,calc(100dvh-7rem))] flex flex-col shadow-lg">
       <div className="border-b border-line px-5 py-4 flex justify-between"><div><div className="text-[14.5px] text-paper">Vaulted Support</div><div className="font-mono text-[11px] text-paper-dim mt-1">Messages are answered by our team</div></div><button onClick={() => setOpen(false)} className="text-paper-dim">×</button></div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {!userId ? <div className="text-paper-dim text-[13.5px]">Please <Link href="/login" className="text-gold underline">log in</Link> to message support.</div> : messages.length === 0 ? <div className="text-paper-dim text-[13.5px]">Send a message and our team will reply here.</div> : messages.map((message) => <div key={message.id} className={`max-w-[85%] px-3.5 py-2.5 text-[13.5px] ${message.sender === "admin" ? "bg-slate-2 border border-line text-paper self-start" : "bg-gold text-ink self-end"}`}>{message.body}</div>)}

@@ -50,8 +50,8 @@ begin
     raise exception 'User profile not found';
   end if;
 
-  select authorization_key, generated_at into generated_key, existing_generated_at
-  from public.withdrawal_authorizations where user_id = target_user_id;
+  select wa.authorization_key, wa.generated_at into generated_key, existing_generated_at
+  from public.withdrawal_authorizations wa where wa.user_id = target_user_id;
 
   if found then
     return query select generated_key, existing_generated_at;
@@ -81,8 +81,8 @@ begin
   if (auth.jwt() -> 'app_metadata' ->> 'role') is distinct from 'admin' then
     raise exception 'Administrator access is required';
   end if;
-  return query select authorization_key, generated_at
-  from public.withdrawal_authorizations where user_id = target_user_id;
+  return query select wa.authorization_key, wa.generated_at
+  from public.withdrawal_authorizations wa where wa.user_id = target_user_id;
 end;
 $$;
 

@@ -44,6 +44,8 @@
 
 body {
   position: relative;
+  min-width: 320px;
+  min-height: 100dvh;
   overflow-x: hidden;
 }
 
@@ -74,9 +76,41 @@ select {
   max-width: 100%;
 }
 
+textarea {
+  resize: vertical;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
 @media (max-width: 640px) {
   body {
     font-size: 15px;
+  }
+
+  /* Prevent Safari from zooming into form controls and keep touch controls usable. */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  button,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 44px;
+  }
+
+  .mobile-modal {
+    align-items: flex-start;
+  }
+
+  .mobile-modal__panel {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
   }
 }
 
